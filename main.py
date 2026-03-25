@@ -1,4 +1,4 @@
-from OpenVoiceV2Chat import VoiceService
+from facilitator_cli import VoiceService
 import time
 
 vs = VoiceService()

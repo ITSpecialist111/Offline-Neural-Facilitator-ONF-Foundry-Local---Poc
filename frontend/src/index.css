@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Spotify Gold / Premium Palette (HSL) */
+  --bg-base: 0 0% 0%;
+  /* Pitch Black */
+  --bg-surface: 0 0% 10%;
+  /* Slightly lighter than before */
+  --bg-elevated: 0 0% 16%;
+  /* Much lighter for contrast */
+  --bg-hover: 0 0% 25%;
+  /* Explicit hover state */
+
+  --accent-gold: 45 100% 50%;
+  /* #FFD700 - Gold */
+  --accent-gold-muted: 45 100% 30%;
+  --accent-emerald: 160 84% 39%;
+
+  --text-primary: 0 0% 100%;
+  --text-secondary: 0 0% 85%;
+  /* Brighter secondary text */
+  --text-muted: 0 0% 60%;
+  /* Brighter muted text */
+
+  --border-subtle: 0 0% 100% / 0.15;
+  --border-strong: 0 0% 100% / 0.3;
+
+  --glass-bg: 0 0% 100% / 0.08;
+  /* More visible glass */
+  --glass-border: 0 0% 100% / 0.1;
+  --glass-blur: 16px;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: hsl(var(--bg-base));
+  color: hsl(var(--text-primary));
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--text-muted) / 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-muted) / 0.5);
+}

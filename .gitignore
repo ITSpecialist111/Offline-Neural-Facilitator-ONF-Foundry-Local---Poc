@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+frontend/node_modules/
+
+# Model weights & caches (large binary files)
+models/
+.olive-cache/
+outputs_v2/
+processed/
+
+# MeloTTS and OpenVoice submodules (large)
+modules/MeloTTS/
+modules/OpenVoice/
+
+# ChromaDB local database
+chroma_db/
+
+# Session data
+sessions/
+
+# Audio files
+*.wav
+*.mp3
+*.ogg
+*.flac
+
+# Knowledge vault (contains personal data)
+vault.txt
+
+# Test artifacts
+rag_benchmark_results.json
+test_rag.pdf
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Logs
+*.log
+
+# Package lock (frontend has its own)
+package-lock.json

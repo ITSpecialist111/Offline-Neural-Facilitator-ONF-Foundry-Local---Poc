@@ -1,73 +1,199 @@
-# Speech-to-rag-OpenvoiceV2-V1-MeloTTS
+# Offline Neural Facilitator (ONF) v1.2.0
 
-LOCAL LLM, UNCENSORED, SPEECH-TO-SPEECH RAG, FREE AI WITH VOICE CLONING AND CHARACTER (personality) CREATION:
+**Privacy-First, Offline AI Meeting Facilitator powered by Microsoft Foundry Local**
 
-Speech to Speech with RAG you can use any version of Openvoice in much more languajes even on version 1 with my code. Just implemented all and works perfectly (Don´t use a virtual envoirment if you want it to run quick).
+The Offline Neural Facilitator (ONF) transforms your PC into an intelligent meeting facilitator that listens, understands, and proactively assists - all running entirely on your local machine with zero cloud dependency.
 
-(This README is tested and works perfectly fine)
+## Architecture
 
-PATHS are inserted as relative PATHS not your "C:\" 
+```
+Frontend (React 19 + Vite)     Backend (FastAPI + WebSockets)     AI Engine
+ localhost:5173            -->   localhost:8000              -->   Foundry Local (localhost:4500)
+   Live Transcript                /transcribe                      Qwen 2.5 0.5B (Reflex)
+   Insights Dashboard             /chat                            DeepSeek R1 1.5B (Reason)
+   Chat Widget                    /ws/stream                       faster-whisper (ASR)
+   Analytics                      /report/generate                 MeloTTS + OpenVoice (TTS)
+                                  /skills, /upload-knowledge       ChromaDB (RAG Vector Store)
+```
 
-REQUIREMENTS:
+## Key Features
 
-1. Windows 10/11
-2. Python 3.10 https://www.python.org/downloads/release/python-3100/
-3. CUDA Toolkit 11.8 https://developer.nvidia.com/cuda-11-8-0-download-archive?target_os=Windows&target_arch=x86_64 Select windows version and .exe(local).
-4. ffmpeg installed https://phoenixnap.com/kb/ffmpeg-windows or pip install ffmpeg
-5.. NVIDIA GPU (will prob work with only CPU too)
-6. microphone
-7. local LLM setup (default is LM studio but working on OLlama to use WEB UI)
-8. You might need Pytorch (https://pytorch.org/) (Included in HOW TO INSTALL)
-9. If an ERROR like this occurs: "Could not load library cudnn_ops_infer64_8.dll. Error code 126" Please make sure cudnn_ops_infer64_8.dll is in your library path!" go to https://github.com/Purfview/whisper-standalone-win/releases/tag/libs download "cuBLAS.and.cuDNN_CUDA11_win_v2.zip take all the files inside .zip (.dll) and move them to your PC's C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin
-10. If an ERROR like this occurs: "Could not load library cublas64_12.dll.": Go to C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin, take cublas64_11.dll make a copy of it and rename it cublas64_12.dll
+### Dual-Engine Intelligence
+- **Reflex Engine (Qwen 2.5 0.5B)**: Fast, low-latency responses for chat, topic detection, action items, and summaries.
+- **Deep Reason Engine (DeepSeek R1 1.5B)**: Complex chain-of-thought reasoning activated via "Deep Think" toggle for conflict analysis, compliance, and strategy.
 
-HOW TO INSTALL:
+### Continuous Listening & Transcription
+- **Real-time ASR**: Uses `faster-whisper` (medium model) with CUDA/CPU fallback and VAD filtering.
+- **Speaker Diarization**: Distinguishes between multiple speakers.
+- **WebSocket Streaming**: Live audio capture from browser microphone via `MediaRecorder` API.
 
-0. Use Allways Windosws PowerShell Terminal
-- /usr/local/bin/python -m pip install --upgrade pip
-1. pip install ffmpeg
-2. prepare yourself...
-3. git clone https://github.com/Koolkatze/Speech-to-rag-OpenvoiceV2-V1-MeloTTS.git
-4. cd Speech-to-rag-OpenvoiceV2-V1-MeloTTS
-5. pip install -r requirements.txt
-6. Take a shower...
-7. mkdir modules
-8. cd modules
-9. download MeloTTS from https://github.com/myshell-ai/MeloTTS.git
-10. download OpenVoice from https://github.com/myshell-ai/OpenVoice.git
-11. cd MeloTTS
-12. pip install -r requirements.txt
-13. pip install -e .
-14. python -m unidic download
-15. download desired languages for MeloTTS from https://huggingface.co/myshell-ai
-16. extract folder to Speech-to-rag-OpenvoiceV2-V1-MeloTTS/modules/MeloTTS
-17. cd Speech-to-rag-OpenvoiceV2-V1-MeloTTS/modules/Openvoice
-18. pip install -r requirements.txt
-19. pip install -e .
-20. download checkpoints from https://myshell-public-repo-host.s3.amazonaws.com/openvoice/checkpoints_v2_0417.zip
-21. extract .zip to Speech-to-rag-OpenvoiceV2-V1-MeloTTS/modules/Openvoice
-22. pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-23. In voice.py set your reference PATHs 
-24. OpenVoice/checkpoints_v2 on line 34
-25. Your-Voice-to-Clone.mp3 on line 281
-26. Your path to modules/OpenVoice/checkpoints_v2/base_speakers/ses/ on line 307
-27. Your-Voice-to-Clone.mp3 on line 326
-28. Your path to modules/OpenVoice/checkpoints_v2/base_speakers/ses/any_of_existent_accents.pth on line 328
-29. Your path to modules/MeloTTS/MeloTTS-[prefered language]/checkpoint.pth on line 357
-30. Your path to modules/MeloTTS/MeloTTS-[prefered language]/config.json on line 357
-31. start LM studio server (or similar) in your PC. you can change to other program by substituting its localhost in: http://localhost:1234/v1 line 28 for any other local LLM host.
-32. Edit chatbot1.txt to create a Chat's Character personality.
-33. Edit vault.txt to create Chats Knowledge about yourself (or user).
-34. Edit main.py and add a # before vs.user_chatbot_conversation() to turn off Openvoice-v1 or add a # vs.user_chatbot_conversation2() to turn off OpenVoice-v2
-35. run: python main.py
+### Proactive Intelligence
+- **Smart Loop**: Automatically scans conversation every 15 seconds for dynamics.
+- **RAG Knowledge Surfacing**: Pushes relevant insights from your Knowledge Vault when it detects matching topics.
+- **Cognitive Load Detection**: Alerts when conversation density exceeds threshold.
+- **Conflict Detection**: Keyword + LLM-based conflict identification with DeepSeek intervention strategy.
 
-You can see how much time each one lasts and use the one that suits better your needs.
+### Knowledge & Skills System
+- **RAG Vault**: Upload PDF/Text files to a ChromaDB vector database for semantic search.
+- **Skills System**: Load specialized personas via `SKILL.md` files (YAML frontmatter + instructions).
+- **Built-in Skills**: Facilitator Core, Crisis Manager, Strategy Consultant, Legal Compliance.
 
-All OpenVoices will clone the reference voice you introduce at start.
+### Data Portability
+- **Report Generation**: Export meeting summaries to Markdown, JSON, CSV, or PDF.
+- **Session Persistence**: Full session save/load to JSON files.
+- **Analytics Dashboard**: Meeting Health score, talk balance metrics, action items grid.
 
-ROADMAP:
+### Text-to-Speech
+- **MeloTTS + OpenVoice**: AI-generated speech with voice cloning/tone conversion.
+- **In-app Playback**: "Play" button on insights to hear them spoken aloud.
 
-1. Change LMStudio for OLlama to use its Web UI or use a Docker file to use LMStudio from anywhere.
-2. Read OLlamas output or Chatbot's answer inside OLlama and stream the text string to Frames by Brilliant Labs by using Brilliant Labs NOA Assistant and OLlama Web UI sharing the string info.
-3. Using all the sensors inside Frames by Brilliant Labs (Camera, Movement/Gravity, Tap Buttons) to control and share info with OLlama and enhance the chatting experience.
-4. Implementing video stream through the glasses camera to the preferred LLM inside OLlama or 5. LMStudio (with Docker) to make a ChatGPT type of chatting with any opensource model.
+## Microsoft Foundry Local Integration
+
+This project uses **Microsoft Azure AI Foundry Local** (Public Preview) for all LLM inference. Foundry Local runs models entirely on-device with no cloud dependency.
+
+### Current Compatibility
+| Component | Version | Notes |
+|---|---|---|
+| **Foundry Local CLI** | v0.8.119+ | Install via `winget install Microsoft.FoundryLocal` |
+| **Python SDK** | `foundry-local-sdk` | Install via `pip install foundry-local-sdk` |
+| **Inference Endpoint** | `localhost:4500` | OpenAI-compatible API |
+| **API Key** | `"foundry"` | Static placeholder for local SDK |
+
+### Supported Hardware Acceleration
+| Provider | Hardware | Status |
+|---|---|---|
+| CUDA | NVIDIA RTX 30xx+ | Built-in, recommended |
+| WebGPU (Dawn) | Any GPU | Built-in fallback |
+| CPU (MLAS) | Any CPU | Built-in fallback |
+| OpenVINO | Intel 11th Gen+ | Plugin, auto-downloaded |
+| QNN | Qualcomm Snapdragon X | Plugin, auto-downloaded |
+| NvTensorRTRTX | NVIDIA RTX 30xx+ | Plugin, auto-downloaded |
+
+### Recent Foundry Local Updates (as of March 2026)
+- **Tool Calling** (v0.8.113+): Function calling support for compatible models.
+- **Built-in Whisper**: On-device audio transcription via `whisper-tiny` model.
+- **Continuous Decoding**: Multi-turn KV-cache for improved conversation performance.
+- **AMD/Intel NPU Support** (v0.7.117+): Pluggable execution providers.
+- **Documentation URL Change**: Docs moved from `/azure/ai-foundry/foundry-local/` to `/azure/foundry-local/`.
+
+## Requirements
+
+1. **Windows 10/11** (macOS/Linux partial support via cross-platform SDK)
+2. **Python 3.12+**
+3. **Node.js 18+** (for frontend)
+4. **Microsoft Foundry Local CLI** (`winget install Microsoft.FoundryLocal`)
+5. **NVIDIA GPU** (recommended for CUDA acceleration, but CPU works)
+6. **Microphone** (for live transcription)
+7. **FFmpeg** (for audio processing)
+
+## Quick Start
+
+### 1. Install Foundry Local
+```powershell
+winget install Microsoft.FoundryLocal
+```
+
+### 2. Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Install Frontend Dependencies
+```bash
+cd frontend && npm install
+```
+
+### 4. Start the Application
+```powershell
+./scripts/start.ps1
+```
+This launches both the backend (FastAPI on port 8000) and frontend (Vite on port 5173).
+
+### 5. Access the UI
+Open your browser to `http://localhost:5173`
+
+## Project Structure
+
+```
+backend/
+  main.py                    # FastAPI server (all REST + WebSocket endpoints)
+  llm/
+    foundry_manager.py       # FoundryEngine wrapper for Foundry Local SDK
+  services/
+    voice_service.py         # Core orchestration (the "brain")
+    rag_service.py           # ChromaDB vector store operations
+    transcription_service.py # faster-whisper ASR
+    tts_service.py           # MeloTTS + OpenVoice
+    diarization_service.py   # Speaker separation
+    agenda_service.py        # Topic detection
+    report_service.py        # Markdown/PDF report generation
+    skill_service.py         # SKILL.md loader and trigger system
+    vision_service.py        # Screenshot capture via pyautogui
+
+frontend/
+  src/
+    App.jsx                  # Main React app (three-panel layout)
+    components/
+      ChatWidget.jsx         # Floating "Ask the Facilitator" chat
+      AnalyticsDashboard.jsx # Session health and metrics
+      VADIndicator.jsx       # Voice activity detection indicator
+
+skills/                      # Modular AI personas (SKILL.md files)
+  facilitator_core.md
+  crisis_manager.md
+  strategy_consultant.md
+  legal_compliance/SKILL.md
+
+scripts/
+  start.ps1                 # PowerShell launcher for backend + frontend
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `POST` | `/transcribe` | Upload audio for transcription + LLM response |
+| `POST` | `/chat` | Direct text chat with RAG context |
+| `POST` | `/tts/speak` | Text-to-speech generation |
+| `POST` | `/action-items` | Extract action items from conversation |
+| `POST` | `/summary` | Generate conversation summary |
+| `POST` | `/upload-knowledge` | Add text to knowledge vault |
+| `POST` | `/upload-file` | Upload PDF/TXT to vault |
+| `POST` | `/agenda/check` | Detect current meeting topic |
+| `GET` | `/skills` | List loaded skills |
+| `POST` | `/skills/upload` | Upload new SKILL.md |
+| `POST` | `/report/generate` | Generate Markdown report |
+| `POST` | `/report/export/pdf` | Generate PDF report |
+| `POST` | `/session/save` | Save session to JSON |
+| `POST` | `/export/{format}` | Export to JSON/CSV |
+| `WS` | `/ws/stream` | WebSocket for live audio streaming |
+
+## Configuration
+
+- **Skills**: Add new personas to `skills/*.md` with YAML frontmatter.
+- **Knowledge Vault**: Drag & drop PDF/Text files into the UI.
+- **Models**: Foundry Local auto-downloads `Qwen 2.5` and `DeepSeek R1` on first run.
+- **Deep Think**: Toggle in the UI to switch between Reflex (fast) and Deep Reason (thorough) modes.
+
+## Implementation Roadmap
+
+- [x] **Phases 1-9**: Core RAG, File Support, Deep Reasoning, WebSockets, Skills, Reports, Proactive Intelligence
+- [x] **Phase 10**: Core Architecture Refactor (Foundry Local SDK)
+- [x] **Phase 11**: Advanced Knowledge Engine (ChromaDB)
+- [x] **Phase 12**: Dynamic Skills System (Anthropic-style SKILL.md)
+- [x] **Phase 13**: Enhanced Visualization & UI (Spotify Gold theme)
+- [x] **Phase 14**: Interactive Agent & Text-to-Speech
+- [x] **Phase 15**: Session Intelligence, Analytics & Exports
+- [ ] **Phase 16**: Multi-Modal Future (video analysis, advanced diarization)
+
+## Privacy & Security
+
+- **Zero Telemetry**: No data leaves your machine.
+- **Localhost Only**: All services bind to `localhost` / `127.0.0.1`.
+- **No Cloud SDKs**: All AI inference runs via Foundry Local on-device.
+- **Local Storage**: Sessions, ChromaDB, and reports stored in local directories.
+
+## License
+
+MIT License - See [LICENSE](LICENSE) for details.
