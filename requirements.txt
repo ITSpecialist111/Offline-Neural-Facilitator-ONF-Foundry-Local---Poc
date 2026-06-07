@@ -1,73 +1,25 @@
-Cython==3.0.11
-Deprecated==1.2.14	
-Distance==0.1.3	
-Jinja2==3.1.4
-Markdown==3.7	
-MarkupSafe==2.1.5	
-PyAudio==0.2.14
-PyYAML==6.0.2
-Pygments==2.18.0
-QtPy==2.4.1
-Send2Trash==1.8.3
-SpeechRecognition==3.10.4
-Unidecode==1.3.7
-Werkzeug==3.0.4
-absl-py==2.1.0
-aiofiles==23.2.1
-altair==5.4.0
-annotated-types==0.7.0
-anyascii==0.3.2
-anyio==4.4.0
-argon2-cffi==23.1.0
-argon2-cffi-bindings==21.2.0
-arrow==1.3.0
-asttokens==2.4.1
-async-lru==2.0.4
-setuptools==68.2.0
-six==1.16.0
-sniffio==1.3.1
-soundfile==0.12.1
-soupsieve==2.6
-stack-data==0.6.3
-starlette>=0.38.2
-sympy==1.13.2
-tensorboard==2.16.2
-tensorboard-data-server==0.7.2
-terminado==0.18.1
-threadpoolctl==3.5.0
-tiktoken==0.7.0
-tinycss2==1.3.0
-tokenizers>=0.13.3
-tomli==2.0.1
-tornado==6.4.1
-tqdm==4.66.5
-traitlets==5.14.3
-transformers>=4.27.4
-txtsplit==1.0.0
-types-python-dateutil==2.9.0.20240821
-typing_extensions==4.12.2
-tzdata==2024.1
-tzlocal==5.2
-unidic==1.1.0
-unidic-lite==1.0.8
-uri-template==1.3.0
-urllib3==2.2.2
-uvicorn>=0.30.6
-wasabi==0.10.1
-wavmark==0.0.3
-wcwidth==0.2.13
-webcolors==24.8.0
-webencodings==0.5.1
-websocket-client==1.8.0
-websockets==11.0.3
-wheel==0.41.2
-whisper-timestamped==1.14.2
-widgetsnbextension>=4.0.13
-wrapt==1.16.0
-foundry-local-sdk
-pypdf
-pyannote.audio
-chromadb
-reportlab
-pyautogui
-faster-whisper
+# Offline Neural Facilitator - CORE backend requirements
+# ------------------------------------------------------
+# These are the only packages required for the backend to boot and serve the
+# API. The app is designed to start and degrade gracefully even if the optional
+# (heavy) components in requirements-optional.txt are not installed.
+#
+#   pip install -r requirements.txt
+#
+# Then optionally add on-device ML capabilities:
+#
+#   pip install -r requirements-optional.txt
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+httpx>=0.27
+numpy>=1.26
+requests>=2.31
+PyYAML>=6.0
+pypdf>=4.2
+
+# Inference clients
+openai>=1.40            # OpenAI-compatible client used for Foundry Local + hybrid online
+foundry-local-sdk       # Microsoft Foundry Local (offline, on-device inference)

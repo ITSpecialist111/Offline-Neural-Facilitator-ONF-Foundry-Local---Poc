@@ -1,0 +1,41 @@
+# Offline Neural Facilitator - OPTIONAL on-device capabilities
+# ------------------------------------------------------------
+# Install these to unlock the heavy, hardware-dependent features. Each is
+# independently optional: the backend detects what is installed at startup and
+# enables only the corresponding capability (see GET /health). A missing package
+# here NEVER prevents the backend from booting.
+#
+#   pip install -r requirements-optional.txt
+#
+# Enable features via the matching ONF_ENABLE_* flags in your .env (see
+# .env.example). On Windows, install a CUDA-enabled torch build for GPU
+# acceleration.
+
+# --- Speech-to-text (live transcription) ---
+# Set ONF_ENABLE_WHISPER=true
+faster-whisper>=1.0
+
+# --- Knowledge vault / RAG (semantic search) ---
+# Without chromadb the vault falls back to an in-memory keyword store.
+chromadb>=0.5
+
+# --- Speaker diarization ---
+# Set ONF_ENABLE_DIARIZATION=true (requires a configured pyannote pipeline)
+# pyannote.audio>=3.1
+
+# --- Reports (PDF export) ---
+reportlab>=4.2
+
+# --- Screen capture (visual evidence) ---
+# Set ONF_ENABLE_VISION=true (requires a desktop session)
+pyautogui>=0.9.54
+
+# --- Deep learning runtime (GPU acceleration for whisper/TTS) ---
+# Install the build that matches your platform/CUDA from https://pytorch.org
+# torch
+
+# --- Text-to-speech (optional; UI uses the browser Web Speech API otherwise) ---
+# MeloTTS + OpenVoice are not published on PyPI and require manual checkpoint
+# setup. The frontend's offline Web Speech fallback covers TTS out of the box,
+# so backend TTS is OFF by default (ONF_ENABLE_TTS=false). To enable it, follow
+# the MeloTTS/OpenVoice install guides and place the checkpoints under modules/.

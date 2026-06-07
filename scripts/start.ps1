@@ -1,7 +1,13 @@
 
+# Start the Offline Neural Facilitator (backend + frontend).
+# Settings are read from .env (see .env.example). Host/port can be overridden
+# via the ONF_HOST / ONF_PORT environment variables.
+$onfHost = if ($env:ONF_HOST) { $env:ONF_HOST } else { "127.0.0.1" }
+$onfPort = if ($env:ONF_PORT) { $env:ONF_PORT } else { "8000" }
+
 # Start Backend
-Write-Host "Starting Backend (Python 3.12)..." -ForegroundColor Green
-$backendProcess = Start-Process -FilePath "py" -ArgumentList "-3.12", "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload" -PassThru -NoNewWindow
+Write-Host "Starting Backend (Python 3.12) on ${onfHost}:${onfPort}..." -ForegroundColor Green
+$backendProcess = Start-Process -FilePath "py" -ArgumentList "-3.12", "-m", "uvicorn", "backend.main:app", "--host", $onfHost, "--port", $onfPort, "--reload" -PassThru -NoNewWindow
 
 # Start Frontend
 Write-Host "Starting Frontend..." -ForegroundColor Cyan

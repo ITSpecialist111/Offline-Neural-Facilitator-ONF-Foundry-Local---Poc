@@ -1,26 +1,34 @@
-# Offline Neural Facilitator (ONF) v1.2.0
+# Offline Neural Facilitator (ONF) v2.0.0
 
 **Privacy-First, Offline AI Meeting Facilitator powered by Microsoft Foundry Local**
 
-The Offline Neural Facilitator (ONF) transforms your PC into an intelligent meeting facilitator that listens, understands, and proactively assists - all running entirely on your local machine with zero cloud dependency.
+The Offline Neural Facilitator (ONF) transforms your PC into an intelligent meeting facilitator that listens, understands, and proactively assists - running entirely on your local machine by default, with an optional opt-in hybrid-online mode for more powerful models when you want it.
 
 ## Architecture
 
 ```
 Frontend (React 19 + Vite)     Backend (FastAPI + WebSockets)     AI Engine
- localhost:5173            -->   localhost:8000              -->   Foundry Local (localhost:4500)
+ localhost:5173            -->   localhost:8000              -->   Foundry Local (auto endpoint)
    Live Transcript                /transcribe                      Qwen 2.5 0.5B (Reflex)
-   Insights Dashboard             /chat                            DeepSeek R1 1.5B (Reason)
-   Chat Widget                    /ws/stream                       faster-whisper (ASR)
-   Analytics                      /report/generate                 MeloTTS + OpenVoice (TTS)
-                                  /skills, /upload-knowledge       ChromaDB (RAG Vector Store)
+   Insights Dashboard             /chat, /health                   Qwen 2.5 1.5B / DeepSeek R1 (Reason)
+   Chat Widget                    /ws/stream                       faster-whisper (ASR, optional)
+   Analytics                      /report/generate                 Web Speech API / MeloTTS (TTS)
+                                  /skills, /upload-knowledge       ChromaDB (RAG, in-memory fallback)
+                                  (optional) Hybrid online model    OpenAI-compatible cloud (opt-in)
 ```
+
+> **Reliability by design:** every heavy component (Whisper, TTS, ChromaDB,
+> diarization, vision) is optional and lazily initialized. The backend always
+> boots; missing or failing components degrade gracefully and are reported via
+> `GET /health` instead of crashing the app. See
+> [Reliability & Graceful Degradation](#reliability--graceful-degradation).
 
 ## Key Features
 
 ### Dual-Engine Intelligence
 - **Reflex Engine (Qwen 2.5 0.5B)**: Fast, low-latency responses for chat, topic detection, action items, and summaries.
-- **Deep Reason Engine (DeepSeek R1 1.5B)**: Complex chain-of-thought reasoning activated via "Deep Think" toggle for conflict analysis, compliance, and strategy.
+- **Deep Reason Engine (Qwen 2.5 1.5B / DeepSeek R1)**: Heavier reasoning activated via "Deep Think" toggle for conflict analysis, compliance, and strategy. Models are configurable by alias (see Configuration).
+- **Optional Hybrid Online**: Strictly opt-in routing of "Deep Think" requests to a more powerful OpenAI-compatible cloud model. Disabled by default — nothing leaves the device unless you enable it.
 
 ### Continuous Listening & Transcription
 - **Real-time ASR**: Uses `faster-whisper` (medium model) with CUDA/CPU fallback and VAD filtering.
@@ -44,7 +52,8 @@ Frontend (React 19 + Vite)     Backend (FastAPI + WebSockets)     AI Engine
 - **Analytics Dashboard**: Meeting Health score, talk balance metrics, action items grid.
 
 ### Text-to-Speech
-- **MeloTTS + OpenVoice**: AI-generated speech with voice cloning/tone conversion.
+- **Browser Web Speech API (default)**: Reliable, fully offline, zero-dependency speech synthesis in the browser.
+- **Optional backend TTS (MeloTTS + OpenVoice)**: AI-generated speech with voice cloning, enabled via `ONF_ENABLE_TTS` when the optional dependencies are installed. The frontend automatically falls back to the browser voice when backend TTS is unavailable.
 - **In-app Playback**: "Play" button on insights to hear them spoken aloud.
 
 ## Microsoft Foundry Local Integration
@@ -54,10 +63,16 @@ This project uses **Microsoft Azure AI Foundry Local** (Public Preview) for all 
 ### Current Compatibility
 | Component | Version | Notes |
 |---|---|---|
-| **Foundry Local CLI** | v0.8.119+ | Install via `winget install Microsoft.FoundryLocal` |
-| **Python SDK** | `foundry-local-sdk` | Install via `pip install foundry-local-sdk` |
-| **Inference Endpoint** | `localhost:4500` | OpenAI-compatible API |
-| **API Key** | `"foundry"` | Static placeholder for local SDK |
+| **Foundry Local CLI** | latest | Install via `winget install Microsoft.FoundryLocal` |
+| **Python SDK** | `foundry-local-sdk` | `pip install foundry-local-sdk` |
+| **Inference Endpoint** | auto-resolved | OpenAI-compatible; the SDK resolves a dynamic endpoint (no hardcoded port) |
+| **API Key** | not required | Local inference needs no key |
+
+The engine uses the Foundry Local SDK to start the service and resolve the
+endpoint and model id automatically. If the SDK is unavailable it falls back to
+a configurable endpoint (`ONF_FOUNDRY_ENDPOINT`). Models are referenced by
+catalog alias (`foundry model ls`), e.g. `qwen2.5-0.5b`, `qwen2.5-1.5b`,
+`deepseek-r1-7b`, `phi-4-mini`.
 
 ### Supported Hardware Acceleration
 | Provider | Hardware | Status |
@@ -95,43 +110,64 @@ winget install Microsoft.FoundryLocal
 
 ### 2. Install Python Dependencies
 ```bash
+# Core dependencies (keeps the backend lean and always-bootable)
 pip install -r requirements.txt
+
+# Optional: heavy on-device capabilities (Whisper ASR, diarization, backend TTS, vision)
+pip install -r requirements-optional.txt
 ```
 
-### 3. Install Frontend Dependencies
+### 3. Configure (optional)
+All settings have safe offline-first defaults. To customize, copy the example
+environment files and edit them:
+```bash
+cp .env.example .env                 # backend settings (ONF_* variables)
+cp frontend/.env.example frontend/.env   # frontend API base (VITE_API_BASE)
+```
+
+### 4. Install Frontend Dependencies
 ```bash
 cd frontend && npm install
 ```
 
-### 4. Start the Application
+### 5. Start the Application
 ```powershell
-./scripts/start.ps1
+./scripts/start.ps1      # Windows (PowerShell)
+```
+```bash
+./scripts/start.sh       # macOS / Linux / Git Bash
 ```
 This launches both the backend (FastAPI on port 8000) and frontend (Vite on port 5173).
 
-### 5. Access the UI
+### 6. Access the UI
 Open your browser to `http://localhost:5173`
+
+Check backend status any time at `http://localhost:8000/health` — it reports
+which components are active and which have gracefully degraded.
 
 ## Project Structure
 
 ```
 backend/
-  main.py                    # FastAPI server (all REST + WebSocket endpoints)
+  config.py                  # Central env-driven settings (all ONF_* toggles)
+  main.py                    # FastAPI server (single lifespan startup, /health, all endpoints)
   llm/
-    foundry_manager.py       # FoundryEngine wrapper for Foundry Local SDK
+    foundry_manager.py       # Resilient FoundryEngine (offline + opt-in hybrid online)
   services/
-    voice_service.py         # Core orchestration (the "brain")
-    rag_service.py           # ChromaDB vector store operations
-    transcription_service.py # faster-whisper ASR
-    tts_service.py           # MeloTTS + OpenVoice
-    diarization_service.py   # Speaker separation
+    voice_service.py         # Core orchestration (the "brain"), fault-isolated init
+    rag_service.py           # ChromaDB vector store with in-memory keyword fallback
+    transcription_service.py # faster-whisper ASR (lazy, optional)
+    tts_service.py           # Optional backend TTS (MeloTTS + OpenVoice)
+    diarization_service.py   # Speaker separation (optional)
     agenda_service.py        # Topic detection
     report_service.py        # Markdown/PDF report generation
     skill_service.py         # SKILL.md loader and trigger system
-    vision_service.py        # Screenshot capture via pyautogui
+    vision_service.py        # Screenshot capture via pyautogui (optional)
 
 frontend/
   src/
+    config.js                # API/WebSocket base URL (VITE_API_BASE)
+    speech.js                # TTS helper: backend TTS -> browser Web Speech fallback
     App.jsx                  # Main React app (three-panel layout)
     components/
       ChatWidget.jsx         # Floating "Ask the Facilitator" chat
@@ -145,14 +181,22 @@ skills/                      # Modular AI personas (SKILL.md files)
   legal_compliance/SKILL.md
 
 scripts/
-  start.ps1                 # PowerShell launcher for backend + frontend
+  start.ps1                 # PowerShell launcher (Windows)
+  start.sh                  # Bash launcher (macOS/Linux/Git Bash)
+
+.env.example                # Backend configuration template
+frontend/.env.example       # Frontend configuration template
+requirements.txt            # Core dependencies (always-bootable backend)
+requirements-optional.txt   # Optional heavy on-device capabilities
+smoke_test.py               # Dependency-light graceful-degradation smoke test
 ```
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/` | Health check |
+| `GET` | `/` | Service banner |
+| `GET` | `/health` | Component status (active / degraded) |
 | `POST` | `/transcribe` | Upload audio for transcription + LLM response |
 | `POST` | `/chat` | Direct text chat with RAG context |
 | `POST` | `/tts/speak` | Text-to-speech generation |
@@ -171,10 +215,47 @@ scripts/
 
 ## Configuration
 
+ONF is configured via environment variables (prefix `ONF_`). Copy `.env.example`
+to `.env` to customize. All values default to a fully offline, on-device setup.
+
+Common settings:
+
+| Variable | Default | Description |
+|---|---|---|
+| `ONF_HOST` / `ONF_PORT` | `127.0.0.1` / `8000` | Backend bind address |
+| `ONF_REFLEX_MODEL` | `qwen2.5-0.5b` | Fast reflex model alias |
+| `ONF_REASON_MODEL` | `qwen2.5-1.5b` | Deep reason model alias |
+| `ONF_FOUNDRY_BOOTSTRAP` | `true` | Let the SDK auto-start Foundry + download models |
+| `ONF_ENABLE_WHISPER` | `true` | On-device ASR via faster-whisper |
+| `ONF_ENABLE_TTS` | `false` | Optional backend TTS (else browser Web Speech) |
+| `ONF_ENABLE_DIARIZATION` | `true` | Speaker separation |
+| `ONF_ENABLE_VISION` | `true` | Screen capture |
+| `ONF_ONLINE_ENABLED` | `false` | Opt-in hybrid online routing |
+| `ONF_ONLINE_BASE_URL` / `ONF_ONLINE_API_KEY` | — | OpenAI-compatible cloud endpoint |
+| `ONF_ONLINE_ROUTE` | `reason` | Which requests go online: `reason`, `all`, `off` |
+
+See `.env.example` for the full list. Other configuration:
+
 - **Skills**: Add new personas to `skills/*.md` with YAML frontmatter.
 - **Knowledge Vault**: Drag & drop PDF/Text files into the UI.
-- **Models**: Foundry Local auto-downloads `Qwen 2.5` and `DeepSeek R1` on first run.
+- **Models**: Foundry Local auto-downloads the configured aliases on first run.
 - **Deep Think**: Toggle in the UI to switch between Reflex (fast) and Deep Reason (thorough) modes.
+
+## Reliability & Graceful Degradation
+
+ONF is built so the components never break each other:
+
+- **Always boots**: The backend starts even if Foundry Local isn't running and
+  no optional ML dependencies are installed.
+- **Lazy, fault-isolated init**: Heavy libraries (Whisper, ChromaDB, TTS,
+  diarization, vision) are imported only when used and wrapped so one failure
+  can't abort startup.
+- **Honest status**: `GET /health` reports each component as active or degraded;
+  endpoints for unavailable features return `503` rather than crashing.
+- **Sensible fallbacks**: RAG falls back to an in-memory keyword store if
+  ChromaDB is absent; TTS falls back to the browser Web Speech API.
+- **Smoke test**: `python smoke_test.py` validates graceful degradation with no
+  heavy dependencies and no Foundry running.
 
 ## Implementation Roadmap
 
@@ -189,9 +270,10 @@ scripts/
 
 ## Privacy & Security
 
-- **Zero Telemetry**: No data leaves your machine.
+- **Offline by default**: No data leaves your machine unless you explicitly enable the hybrid-online engine (`ONF_ONLINE_ENABLED`).
 - **Localhost Only**: All services bind to `localhost` / `127.0.0.1`.
-- **No Cloud SDKs**: All AI inference runs via Foundry Local on-device.
+- **On-device inference**: All default AI inference runs via Foundry Local on-device.
+- **Opt-in hybrid**: When enabled, only the requests you route online (e.g. "Deep Think") are sent to your chosen OpenAI-compatible endpoint.
 - **Local Storage**: Sessions, ChromaDB, and reports stored in local directories.
 
 ## License
