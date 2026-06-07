@@ -48,7 +48,17 @@ function App() {
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [vadEnergy, setVadEnergy] = useState(0)
   // Stable per-session id (computed once, not on every render).
-  const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase())
+  const [sessionId] = useState(() => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID().split('-')[0].toUpperCase()
+    }
+    // Fallback for older browsers (non-security use: display/correlation only).
+    const bytes = new Uint8Array(8)
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(bytes)
+    }
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase()
+  })
   const mediaRecorderRef = useRef(null)
   const socketRef = useRef(null)
   const fileInputRef = useRef(null)
