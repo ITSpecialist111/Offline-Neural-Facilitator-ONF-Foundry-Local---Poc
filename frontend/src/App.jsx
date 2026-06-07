@@ -3,6 +3,8 @@ import { Mic, Square, Play, Activity, List, AlertTriangle, MessageSquare, Power,
 import ChatWidget from './components/ChatWidget'
 import AnalyticsDashboard from './components/AnalyticsDashboard'
 import VADIndicator from './components/VADIndicator'
+import { apiUrl, wsUrl } from './config'
+import { speak } from './speech'
 import './DesignSystem.css'
 
 const TranscriptItem = ({ msg, isActive }) => {
@@ -45,6 +47,8 @@ function App() {
   const [skills, setSkills] = useState([])
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [vadEnergy, setVadEnergy] = useState(0)
+  // Stable per-session id (computed once, not on every render).
+  const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase())
   const mediaRecorderRef = useRef(null)
   const socketRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -58,7 +62,7 @@ function App() {
   }, [transcript])
 
   useEffect(() => {
-    fetch('http://localhost:8000/skills')
+    fetch(apiUrl('/skills'))
       .then(res => res.json())
       .then(data => setSkills(data.skills))
       .catch(err => console.error("Failed to load skills", err))
@@ -72,7 +76,7 @@ function App() {
     formData.append('file', file)
 
     try {
-      const res = await fetch('http://localhost:8000/skills/upload', {
+      const res = await fetch(apiUrl('/skills/upload'), {
         method: 'POST',
         body: formData
       })
@@ -108,7 +112,7 @@ function App() {
   const generateReport = async (summaryText) => {
     try {
       const agenda = insights.find(i => i.type === 'Agenda')?.text || "General"
-      const res = await fetch("http://localhost:8000/report/generate", {
+      const res = await fetch(apiUrl("/report/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -127,7 +131,7 @@ function App() {
 
   useEffect(() => {
     // Connect WebSocket on mount
-    const socket = new WebSocket("ws://localhost:8000/ws/stream")
+    const socket = new WebSocket(wsUrl("/ws/stream"))
     socket.onopen = () => {
       console.log("WebSocket connected")
       // setStatus("Ready") // Don't override status here if it's "Ready" default
@@ -192,7 +196,7 @@ function App() {
 
       // Save Session
       try {
-        const res = await fetch('http://localhost:8000/session/save', { method: 'POST' })
+        const res = await fetch(apiUrl('/session/save'), { method: 'POST' })
         if (res.ok) {
           console.log("Session saved")
           setStatus("Session Ended")
@@ -206,7 +210,7 @@ function App() {
 
   const captureScreen = async () => {
     try {
-      const res = await fetch('http://localhost:8000/vision/capture', { method: 'POST' })
+      const res = await fetch(apiUrl('/vision/capture'), { method: 'POST' })
       const data = await res.json()
       if (data.status === 'success') {
         setInsights(prev => [{ type: 'System', text: `Snapshot captured: ${data.filepath.split('\\').pop()}` }, ...prev])
@@ -218,21 +222,8 @@ function App() {
   }
 
   const handleTTS = async (text) => {
-    try {
-      const res = await fetch("http://localhost:8000/tts/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      })
-      const data = await res.json()
-      if (data.audio_url) {
-        // Add cache buster to timestamp
-        const audio = new Audio(`${data.audio_url}?t=${Date.now()}`)
-        audio.play()
-      }
-    } catch (err) {
-      console.error("TTS Failed", err)
-    }
+    // Uses backend TTS when available, otherwise the browser's offline Web Speech API.
+    await speak(text)
   }
 
   return (
@@ -307,7 +298,7 @@ function App() {
                           e.preventDefault();
                           if (!e.target.value.trim()) return;
                           try {
-                            await fetch("http://localhost:8000/upload-knowledge", {
+                            await fetch(apiUrl("/upload-knowledge"), {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ text: e.target.value })
@@ -328,7 +319,7 @@ function App() {
                           const formData = new FormData();
                           formData.append("file", file);
                           try {
-                            const res = await fetch("http://localhost:8000/upload-file", { method: "POST", body: formData });
+                            const res = await fetch(apiUrl("/upload-file"), { method: "POST", body: formData });
                             if (res.ok) setInsights(prev => [{ type: 'System', text: 'Vault updated' }, ...prev]);
                           } catch (err) { console.error(err); }
                         }} />
@@ -357,7 +348,7 @@ function App() {
                     <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500' : 'bg-accent-emerald'}`}></div>
                     {status}
                   </div>
-                  <span className="text-text-muted text-xs">• Session ID: {Math.random().toString(36).substring(7).toUpperCase()}</span>
+                  <span className="text-text-muted text-xs">• Session ID: {sessionId}</span>
                 </div>
               </div>
 
@@ -440,7 +431,7 @@ function App() {
                 <div className="space-y-4">
                   <button
                     onClick={async () => {
-                      const res = await fetch("http://localhost:8000/action-items", { method: "POST" });
+                      const res = await fetch(apiUrl("/action-items"), { method: "POST" });
                       const data = await res.json();
                       if (data.action_items) setInsights(prev => [{ type: 'Proactive', text: `Action Item: ${data.action_items}` }, ...prev]);
                     }}
@@ -517,7 +508,7 @@ function App() {
               try {
                 const agenda = insights.find(i => i.type === 'Agenda')?.text || "General"
                 const summary = insights.find(i => i.type === 'Summary')?.text || ""
-                const res = await fetch("http://localhost:8000/report/export/pdf", {
+                const res = await fetch(apiUrl("/report/export/pdf"), {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -545,7 +536,7 @@ function App() {
             onClick={async () => {
               setStatus("Summarizing...");
               try {
-                const res = await fetch("http://localhost:8000/summary", { method: "POST" });
+                const res = await fetch(apiUrl("/summary"), { method: "POST" });
                 const data = await res.json();
                 setInsights(prev => [{ type: 'Summary', text: data.summary }, ...prev]);
                 setStatus("Ready");

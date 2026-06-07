@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { MessageSquare, X, Send, Bot, User } from 'lucide-react'
+import { apiUrl } from '../config'
 
 export default function ChatWidget() {
     const [isOpen, setIsOpen] = useState(false)
@@ -27,7 +28,7 @@ export default function ChatWidget() {
         setIsLoading(true)
 
         try {
-            const res = await fetch("http://localhost:8000/chat", {
+            const res = await fetch(apiUrl("/chat"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query: userMsg.text })
