@@ -21,6 +21,8 @@ class AgendaService:
         Output ONLY the topic name. If uncertain, output 'Unknown'.
         """
         
+        if not self.foundry:
+            return self.current_topic
         new_topic = self.foundry.fast_reflex(prompt, system_prompt="You are a topic detector.")
         if new_topic and new_topic != "Unknown":
             self.current_topic = new_topic.strip()
