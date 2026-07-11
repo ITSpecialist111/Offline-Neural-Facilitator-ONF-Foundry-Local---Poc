@@ -239,6 +239,16 @@ The repository now includes a standalone native Android alpha under [android](an
 
 [**Download ONF Android v0.1.0-alpha01 APK**](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.apk) · [SHA-256 checksum](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.sha256.txt) · [Release notes](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/tag/android-v0.1.0-alpha01)
 
+#### Recommended tester installation order
+
+1. Install the official [Google AI Edge Gallery](https://play.google.com/store/apps/details?id=com.google.ai.edge.gallery) from Google Play **first**. For this alpha programme it is the recommended model-discovery and device-validation companion: use it to explore Gemma variants and confirm that local AI runs acceptably on the phone.
+2. Download the ONF APK and checksum from the links above. Verify the checksum, allow **Install unknown apps** only for the browser or file manager opening the APK, and install ONF.
+3. Open **ONF → Menu → Private system and models**. To enable ONF generative reasoning or transcription, import an original/shared LiteRT-LM-compatible `.litertlm` pack into ONF with Android's document picker.
+4. Do not assume that a model downloaded inside Edge Gallery is automatically available to ONF. Android scoped storage isolates Gallery's app files, and Gallery currently exposes no supported cross-app model-serving or export contract. ONF therefore needs its own explicit model import.
+5. The official [Microsoft Foundry Local Android companion](https://play.google.com/store/apps/details?id=com.microsoft.foundrylocal.app) is the planned service-style companion path. ONF can detect the preview today, but it cannot use Foundry catalog models until Microsoft supplies the documented, currently gated Android client SDK.
+
+Edge Gallery and Foundry Local therefore have different roles: **Edge Gallery is the recommended tester model-discovery/reference app now; Foundry Local is the intended future runtime companion once its supported SDK integration is available.** ONF's deterministic sessions, local knowledge, skills, decisions, actions, and exports work even when no generative model is configured.
+
 This is an **experimental debug-signed sideload build**, not a Google Play release. Android may require **Install unknown apps** permission for the browser or file manager used to open it. The APK does not bundle multi-gigabyte model weights; compatible Gemma `.litertlm` packs must be imported separately. Verify the download before installing: SHA-256 `41AA785B69C63CED2A812A1AAC2463A9F3F0ABD4F234E712560E50C7EB859D35`.
 
 The intended next distribution step—subject to community interest—is a properly release-signed, policy-reviewed Google Play listing with Play App Signing, store privacy/data-safety declarations, model-license handling, an upgrade-safe storage strategy, and broader device testing. Until those gates are complete, sideloading remains the honest alpha channel.
