@@ -1,0 +1,10 @@
+# Install after requirements.txt to enable live transcription and local speech.
+-r requirements.txt
+
+torch>=2.3
+torchaudio>=2.3
+faster-whisper>=1.0,<2.0
+soundfile>=0.12,<1.0
+
+# Pinned upstream speech engine. Setup caches its model assets separately.
+melotts @ git+https://github.com/myshell-ai/MeloTTS.git@209145371cff8fc3bd60d7be902ea69cbdb7965a

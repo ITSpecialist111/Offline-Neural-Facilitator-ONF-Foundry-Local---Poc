@@ -1,28 +1,42 @@
-# Privacy Specialist Audit Report: Zero-Telemetry Verification
+# Privacy and Offline Boundary Audit
 
-## System Mandate
-The Offline Neural Facilitator (ONF) is designed to operate in a **strictly local** environment. This report confirms that as of version 1.2.0, all data flows are contained within the user's silicon and no external telemetry is active.
+**Audit date:** 11 July 2026
+**Scope:** active v2 web application code and runtime defaults
 
-## Audit Findings
+## Verified controls
 
-### 1. Data Flow Analysis
-- **Audio Processing**: Verified that Whisper (transcription) and OpenVoice/MeloTTS (speech synthesis) operate with `local_files_only=True`. No audio data is uploaded to cloud providers.
-- **RAG Pipeline**: Vector storage (ChromaDB) and embeddings are localized. Public model downloads are blocked during runtime; all models must be pre-provisioned in the `modules/` or `models/` directory.
-- **LLM Inference**: The "Foundry Local" SDK is verified to communicate only over `localhost` (default port 4500). No external API tokens are required or used.
+- FastAPI and Vite bind to `127.0.0.1` in the supported launcher.
+- Frontend API and WebSocket traffic target loopback services.
+- Foundry inference targets `127.0.0.1:4500` by default.
+- No telemetry, advertising or remote error-reporting SDK is present.
+- Session state is stored in local JSON files.
+- Reports are written to the local `FacilitatorReports` directory.
+- Knowledge is stored in a local ChromaDB collection.
+- Knowledge embeddings use `onf-local-hash-v1`, which performs no network access.
+- faster-whisper is configured with `local_files_only=True` by default.
+- Runtime MeloTTS sets Hugging Face and Transformers offline modes before loading English language assets.
+- Uploads are limited to 20 MB and knowledge file types are allowlisted.
+- CORS is restricted to local frontend origins by default.
+- Skill filenames are sanitized before persistence.
 
-### 2. Dependency Audit
-- **Cleaned**: Removed legacy cloud dependencies including `boto3`, `google-cloud-storage`, and `s3transfer`.
-- **Zero-Telemetry**: No analytics frameworks (Segment, Posthog, Sentry) were found in the active codebase.
+## Explicit provisioning exception
 
-### 3. Persistence Security
-- **Session Logs**: Stored as local JSON files in `/sessions`.
-- **Vault Data**: Stored in a local `chroma_db` directory.
-- **Recommendations**: Users are encouraged to use filesystem-level encryption (e.g., BitLocker, FileVault) for the project directory to ensure data at rest is secure.
+The setup workflow can download Foundry and audio models. This is an intentional provisioning action, not meeting-time data transfer. Once cached, the supported runtime performs inference locally.
 
-## Verification Status
-- [x] Enforce `local_files_only` for inference engines.
-- [x] Localize embedding generation.
-- [x] Remove unused cloud SDKs.
-- [x] Verify `localhost`-only network signature.
+## Known limitations
 
-**Status: VERIFIED SECURE & OFFLINE**
+1. Session, vault and report content is not encrypted by ONF. Filesystem encryption such as BitLocker is required for strong data-at-rest protection.
+2. Uploaded text is still untrusted input and can influence local model output. The app limits file type and size but does not provide a complete prompt-injection defense.
+3. The optional speech stack has its own dependency chain and should be reviewed before regulated deployment.
+4. Foundry Local can use the network for initial models, execution providers, and optional catalog refreshes; offline operation begins after provisioning.
+5. This is a code/configuration audit, not a packet capture or formal penetration test.
+
+## Runtime verification checklist
+
+- [ ] Disable Wi-Fi/Ethernet after provisioning and complete the presenter scenario.
+- [ ] Confirm only loopback listeners exist for ports 4500, 5173 and 8000.
+- [ ] Capture process network activity during a real session.
+- [ ] Confirm exports and ChromaDB remain inside approved encrypted storage.
+- [ ] Review retention and deletion requirements with the deployment owner.
+
+**Result:** The default architecture is local-first and contains no application telemetry. Formal “air-gapped” or regulated-use claims require the runtime verification checklist and host controls above.

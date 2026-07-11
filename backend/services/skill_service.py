@@ -9,6 +9,7 @@ class SkillService:
 
     def load_skills(self):
         """Scans the skills directory for SKILL.md files."""
+        self.loaded_skills.clear()
         if not os.path.exists(self.skills_dir):
             os.makedirs(self.skills_dir)
             return
@@ -16,7 +17,7 @@ class SkillService:
         print(f"Scanning skills in '{self.skills_dir}'...")
         for root, dirs, files in os.walk(self.skills_dir):
             for file in files:
-                if file.lower() == "skill.md":
+                if file.lower().endswith(".md"):
                     self._parse_skill(os.path.join(root, file))
 
     def _parse_skill(self, filepath):

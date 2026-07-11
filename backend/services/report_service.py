@@ -37,13 +37,15 @@ class ReportService:
         
         # Group insights by type
         for insight in insights:
-            content += f"- **{insight.get('type', 'Info')}**: {insight.get('text', '')}\n"
+            insight_type = insight.get('type') or insight.get('kind', 'Info')
+            content += f"- **{insight_type}**: {insight.get('text', '')}\n"
 
         content += "\n## Transcript\n"
         for msg in transcript:
             role = msg.get('role', 'Unknown').capitalize()
-            text = msg.get('text', '')
-            content += f"**{role}**: {text}\n\n"
+            speaker = msg.get('speaker', role)
+            text = msg.get('text', '') or msg.get('content', '')
+            content += f"**{speaker}**: {text}\n\n"
             
         try:
             with open(filepath, "w", encoding="utf-8") as f:
@@ -104,6 +106,7 @@ class ReportService:
         from reportlab.lib import colors
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from xml.sax.saxutils import escape
         
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"Meeting_Report_{timestamp}.pdf"
@@ -126,18 +129,20 @@ class ReportService:
             
             # Meta
             elements.append(Paragraph(f"<b>Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')}", normal_style))
-            elements.append(Paragraph(f"<b>Topic:</b> {topic}", normal_style))
+            elements.append(Paragraph(f"<b>Topic:</b> {escape(str(topic))}", normal_style))
             elements.append(Spacer(1, 12))
             
             # Summary
             elements.append(Paragraph("Executive Summary", heading_style))
-            elements.append(Paragraph(summary if summary else "No summary generated.", normal_style))
+            elements.append(Paragraph(escape(str(summary)) if summary else "No summary generated.", normal_style))
             elements.append(Spacer(1, 12))
             
             # Insights
             elements.append(Paragraph("Key Insights & Action Items", heading_style))
             for insight in insights:
-                text = f"• <b>{insight.get('type', 'Info')}</b>: {insight.get('text', '')}"
+                insight_type = escape(str(insight.get('type') or insight.get('kind', 'Info')))
+                insight_text = escape(str(insight.get('text', '')))
+                text = f"• <b>{insight_type}</b>: {insight_text}"
                 elements.append(Paragraph(text, normal_style))
             elements.append(Spacer(1, 12))
             
@@ -146,7 +151,8 @@ class ReportService:
             for msg in transcript:
                 role = msg.get('role', 'Unknown').capitalize()
                 text = msg.get('text', '') or msg.get('content', '')
-                elements.append(Paragraph(f"<b>{role}:</b> {text}", normal_style))
+                speaker = escape(str(msg.get('speaker', role)))
+                elements.append(Paragraph(f"<b>{speaker}:</b> {escape(str(text))}", normal_style))
                 elements.append(Spacer(1, 6))
                 
             doc.build(elements)

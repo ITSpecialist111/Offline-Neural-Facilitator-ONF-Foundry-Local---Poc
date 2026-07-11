@@ -1,185 +1,134 @@
+"""Deterministic end-to-end smoke test for ONF v2.
+
+Start the application first with ``.\\scripts\\start.ps1 -NoBrowser`` or run the
+backend directly.  This suite deliberately avoids ASR/TTS so it never downloads
+or loads optional voice models.
+"""
+
+from __future__ import annotations
+
 import asyncio
-import websockets
-import requests
 import json
-import os
+import sys
 import time
+from pathlib import Path
 
-BASE_URL = "http://localhost:8000"
-WS_URL = "ws://localhost:8000/ws/stream"
+import requests
+import websockets
 
-def create_dummy_wav(filename="test_audio.wav"):
-    # Create a 1-second silent WAV file for testing
-    import wave
-    with wave.open(filename, 'wb') as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(16000)
-        wav_file.writeframes(b'\x00' * 32000) # 1 sec of silence
-    return filename
-
-def test_deep_reasoning():
-    print("\n[SMOKE] Testing Deep Reasoning Endpoint...")
-    filename = create_dummy_wav()
-    try:
-        with open(filename, 'rb') as f:
-            files = {'file': (filename, f, 'audio/wav')}
-            data = {'mode': 'reason'}
-            start = time.time()
-            response = requests.post(f"{BASE_URL}/transcribe", files=files, data=data)
-            duration = time.time() - start
-            
-        if response.status_code == 200:
-            res_json = response.json()
-            if res_json.get('mode') == 'reason':
-                print(f"✅ Deep Reasoning Success ({duration:.2f}s)")
-                return True
-            else:
-                print(f"❌ Failed: Mode mismatch. Got {res_json.get('mode')}")
-        else:
-            print(f"❌ Failed: Status {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-    finally:
-        if os.path.exists(filename):
-            os.remove(filename)
-    return False
-
-async def test_websocket_stream():
-    print("\n[SMOKE] Testing WebSocket Streaming...")
-    filename = create_dummy_wav("stream_test.wav")
-    try:
-        async with websockets.connect(WS_URL) as websocket:
-            print("   Connected to WebSocket")
-            
-            # Send audio chunks
-            with open(filename, 'rb') as f:
-                while chunk := f.read(4000): # Send small chunks
-                    await websocket.send(chunk)
-                    await asyncio.sleep(0.1)
-            
-            # Send a bit more silence to trigger buffer
-            await websocket.send(b'\x00' * 65000)
-            
-            print("   Sent audio data")
-            
-            # Wait for meaningful response (with timeout)
-            try:
-                response = await asyncio.wait_for(websocket.recv(), timeout=5.0)
-                data = json.loads(response)
-                if data.get('type') == 'transcript':
-                    print(f"✅ WebSocket Stream Success: Received transcript update")
-                    print(f"   Segments: {len(data.get('segments', []))}")
-                    return True
-            except asyncio.TimeoutError:
-                print("⚠️ WebSocket Timeout (Expected if mock silence yields no text, but connection held)")
-                return True # Connection held is a pass for now
-                
-    except Exception as e:
-        print(f"❌ WebSocket Error: {e}")
-        return False
-    finally:
-         if os.path.exists(filename):
-            os.remove(filename)
-
-def test_skills_endpoint():
-    print("\n[SMOKE] Testing Skills Endpoint...")
-    try:
-        response = requests.get(f"{BASE_URL}/skills")
-        if response.status_code == 200:
-            data = response.json()
-            if "skills" in data and isinstance(data["skills"], list):
-                print(f"✅ Skills Endpoint Success (Found {len(data['skills'])} skills)")
-                return True
-            else:
-                print(f"❌ Failed: Invalid format {data}")
-        else:
-            print(f"❌ Failed: Status {response.status_code}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-    return False
-
-def test_agenda_endpoint():
-    print("\n[SMOKE] Testing Agenda Endpoint...")
-    try:
-        # Check Agenda (POST)
-        response = requests.post(f"{BASE_URL}/agenda/check")
-        if response.status_code == 200:
-            data = response.json()
-            if "current_topic" in data:
-                print(f"✅ Agenda Endpoint Success (Topic: '{data['current_topic']}')")
-                return True
-            else:
-                 print(f"❌ Failed: Invalid format {data}")
-        else:
-             print(f"❌ Failed: Status {response.status_code}")
-    except Exception as e:
-         print(f"❌ Error: {e}")
-    return False
-
-def test_rag_health():
-    print("\n[SMOKE] Testing RAG & ChromaDB Health...")
-    try:
-        # Assuming we can check count via a debug endpoint or just test upload/search
-        # Let's test a simple search via /chat if available, or just verify the service initializes
-        response = requests.post(f"{BASE_URL}/chat", json={"query": "Hello"})
-        if response.status_code == 200:
-            print(f"✅ RAG/Chat Health Success")
-            return True
-        else:
-            print(f"❌ Failed: Status {response.status_code}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-    return False
-
-def test_report_endpoint():
-    print("\n[SMOKE] Testing Report Endpoint...")
-    try:
-        data = {
-            "transcript": [{"role": "user", "text": "Hello"}],
-            "insights": [{"type": "Topic", "text": "Intro"}],
-            "summary": "This is a test summary.",
-            "topic": "Smoke Test"
-        }
-        response = requests.post(f"{BASE_URL}/report/generate", json=data)
-        if response.status_code == 200:
-            res_json = response.json()
-            if res_json.get("status") == "success" and "filepath" in res_json:
-                print(f"✅ Report Endpoint Success (Saved to {res_json['filepath']})")
-                return True
-            else:
-                print(f"❌ Failed: Invalid format {res_json}")
-        else:
-             print(f"❌ Failed: Status {response.status_code}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-    return False
+BASE_URL = "http://127.0.0.1:8000"
+WS_URL = "ws://127.0.0.1:8000/ws/stream"
 
 
-async def main():
-    print("=== STARTING SMOKE TESTS v2.2 ===")
-    
-    # Wait for server to be up
-    for i in range(10):
+def request(method: str, path: str, **kwargs) -> dict:
+    response = requests.request(method, f"{BASE_URL}{path}", timeout=120, **kwargs)
+    response.raise_for_status()
+    return response.json()
+
+
+def wait_for_backend() -> None:
+    for _ in range(40):
         try:
-            requests.get(BASE_URL)
-            break
-        except:
-            print(f"Waiting for server... {i+1}/10")
-            time.sleep(2)
-            
-    reason_pass = test_deep_reasoning()
-    skills_pass = test_skills_endpoint()
-    agenda_pass = test_agenda_endpoint()
-    report_pass = test_report_endpoint()
-    rag_pass = test_rag_health()
-    ws_pass = await test_websocket_stream()
-    
-    if reason_pass and skills_pass and agenda_pass and report_pass and ws_pass and rag_pass:
-        print("\n🎉 ALL SMOKE TESTS PASSED!")
-    else:
-        print("\n💥 SMOKE TESTS FAILED")
+            if request("GET", "/").get("status") == "ready":
+                return
+        except Exception:
+            time.sleep(0.25)
+    raise RuntimeError("ONF backend did not become ready")
+
+
+def assert_health() -> None:
+    payload = request("GET", "/health")
+    capabilities = payload["capabilities"]
+    assert payload["status"] == "ready"
+    assert capabilities["knowledge"]["status"] == "ready"
+    assert capabilities["knowledge"]["curated_chunks"] >= 8
+    assert capabilities["privacy"]["telemetry"] is False
+    assert capabilities["privacy"]["network_scope"] == "loopback only"
+    print("PASS health and privacy contract")
+
+
+async def run_showcase_and_observe() -> list[dict]:
+    events: list[dict] = []
+    async with websockets.connect(WS_URL, open_timeout=5) as websocket:
+        initial = json.loads(await asyncio.wait_for(websocket.recv(), timeout=5))
+        assert initial["type"] == "session_state"
+
+        request("POST", "/demo/start")
+        deadline = asyncio.get_running_loop().time() + 15
+        while asyncio.get_running_loop().time() < deadline:
+            event = json.loads(await asyncio.wait_for(websocket.recv(), timeout=12))
+            events.append(event)
+            if event.get("type") == "session_status" and event.get("status") == "ready":
+                break
+
+    event_types = {event["type"] for event in events}
+    assert {"transcript", "insight", "decision", "action", "session_status"}.issubset(event_types)
+    print(f"PASS WebSocket event contract ({len(events)} events)")
+    return events
+
+
+def assert_showcase_state() -> dict:
+    state = request("GET", "/state")["state"]
+    assert state["session"]["topic"] == "Code Blue: Ransomware at Northstar Hospital"
+    assert state["session"]["status"] == "ready"
+    assert len(state["transcript"]) == 7
+    assert len(state["insights"]) == 4
+    assert len(state["decisions"]) == 1
+    assert len(state["actions"]) == 3
+    assert len(state["risks"]) == 1
+    assert {item["owner"] for item in state["actions"]} == {"Priya", "Marcus", "Elena"}
+    print("PASS deterministic showcase outcomes")
+    return state
+
+
+def assert_chat() -> None:
+    response = request(
+        "POST",
+        "/chat",
+        json={"query": "What decision did the group make and who owns the next steps?", "mode": "reflex"},
+    )
+    answer = response["response"].lower()
+    assert answer
+    assert "ransom" in answer and "priya" in answer and "marcus" in answer and "elena" in answer
+    print("PASS local facilitator query")
+
+
+def assert_exports(state: dict) -> None:
+    summary = request("POST", "/summary")["summary"]
+    payload = {
+        "transcript": state["transcript"],
+        "insights": state["insights"],
+        "summary": summary,
+        "topic": state["session"]["topic"],
+    }
+    results = [
+        request("POST", "/session/save"),
+        request("POST", "/export/json"),
+        request("POST", "/report/generate", json=payload),
+        request("POST", "/report/export/pdf", json=payload),
+    ]
+    for result in results:
+        path = Path(result["filepath"])
+        assert path.exists(), f"Missing export: {path}"
+        assert path.stat().st_size > 0, f"Empty export: {path}"
+    print("PASS JSON, Markdown, PDF and session persistence")
+
+
+async def main() -> int:
+    try:
+        wait_for_backend()
+        assert_health()
+        await run_showcase_and_observe()
+        state = assert_showcase_state()
+        assert_chat()
+        assert_exports(state)
+    except Exception as exc:
+        print(f"FAIL {type(exc).__name__}: {exc}")
+        return 1
+
+    print("\nALL ONF V2 SMOKE TESTS PASSED")
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))

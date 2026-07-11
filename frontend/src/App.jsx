@@ -1,578 +1,259 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { Mic, Square, Play, Activity, List, AlertTriangle, MessageSquare, Power, Zap, ChevronRight, BarChart3, Clock, Settings, Brain } from 'lucide-react'
-import ChatWidget from './components/ChatWidget'
-import AnalyticsDashboard from './components/AnalyticsDashboard'
-import VADIndicator from './components/VADIndicator'
-import './DesignSystem.css'
-
-const TranscriptItem = ({ msg, isActive }) => {
-  if (msg.role === 'system' && msg.isEvent) {
-    return (
-      <div className="flex gap-4 flex-row-reverse mb-8 group">
-        <div className="w-8 h-8 rounded-full bg-accent-gold text-black flex items-center justify-center shrink-0 gold-glow">
-          <Zap size={14} fill="currentColor" />
-        </div>
-        <div className="max-w-xl">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-black font-semibold shadow-lg">
-            {msg.text}
-            {msg.citation && (
-              <div className="mt-2 pt-2 border-t border-black/10 text-[10px] uppercase tracking-widest font-bold">
-                Ref: {msg.citation}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`mb-6 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-      <p className={`spotify-lyrics-text ${isActive ? 'active' : ''}`}>
-        {msg.text}
-      </p>
-    </div>
-  );
-};
+import { useCallback, useEffect, useState } from 'react'
+import { AppHeader, Sidebar } from './components/AppChrome'
+import {
+  ExportDialog,
+  NewSessionDialog,
+  SystemDialog,
+  Toast,
+  VaultDialog,
+} from './components/Dialogs'
+import { IntelligencePanel } from './components/IntelligencePanel'
+import { TranscriptWorkspace } from './components/TranscriptWorkspace'
+import { useFacilitator } from './hooks/useFacilitator'
+import { useSegmentRecorder } from './hooks/useSegmentRecorder'
+import { audioUrl } from './lib/api'
 
 function App() {
-  const [isRecording, setIsRecording] = useState(false)
-  const [transcript, setTranscript] = useState([])
-  const [insights, setInsights] = useState([])
-  const [status, setStatus] = useState("Ready")
-  const [isDeepThink, setIsDeepThink] = useState(false)
-  const [activeTab, setActiveTab] = useState('live')
+  const facilitator = useFacilitator()
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light')
+  const [mobileNavigation, setMobileNavigation] = useState(false)
+  const [activeIntelligenceTab, setActiveIntelligenceTab] = useState('guidance')
+  const [dialog, setDialog] = useState(null)
   const [skills, setSkills] = useState([])
-  const [showAnalytics, setShowAnalytics] = useState(false)
-  const [vadEnergy, setVadEnergy] = useState(0)
-  const mediaRecorderRef = useRef(null)
-  const socketRef = useRef(null)
-  const fileInputRef = useRef(null)
-  const transcriptEndRef = useRef(null)
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    if (transcriptEndRef.current) {
-      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [transcript])
+  const [busyAction, setBusyAction] = useState('')
+  const [queryBusy, setQueryBusy] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const [actionToast, setActionToast] = useState(null)
 
   useEffect(() => {
-    fetch('http://localhost:8000/skills')
-      .then(res => res.json())
-      .then(data => setSkills(data.skills))
-      .catch(err => console.error("Failed to load skills", err))
+    const topic = facilitator.state.session.topic
+    document.title = topic && topic !== 'Untitled session' ? `${topic} — ONF` : 'ONF — Offline Neural Facilitator'
+  }, [facilitator.state.session.topic])
+
+  const showSuccess = useCallback((title, message = '') => {
+    setActionToast({ type: 'success', title, message })
   }, [])
 
-  const handleSkillUpload = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
+  const handleRecorderError = useCallback((error) => {
+    setActionToast({ type: 'error', title: 'Microphone unavailable', message: error.message })
+  }, [])
 
-    const formData = new FormData()
-    formData.append('file', file)
+  const handleAudioSegment = useCallback(async (blob) => {
+    const sent = await facilitator.sendAudio(blob)
+    if (!sent) throw new Error('The local event stream is reconnecting. This segment was not sent.')
+  }, [facilitator])
 
+  const recorder = useSegmentRecorder(handleAudioSegment, handleRecorderError)
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.setAttribute('data-theme', next)
+    setTheme(next)
+  }
+
+  const runDemo = async () => {
+    setMobileNavigation(false)
+    setActiveIntelligenceTab('guidance')
+    setBusyAction('demo')
     try {
-      const res = await fetch('http://localhost:8000/skills/upload', {
+      await facilitator.run('/demo/start', { method: 'POST' })
+      showSuccess('Showcase started', 'Watch the meeting move from tension to a controlled decision and owned next steps.')
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  const askFacilitator = async (query, mode) => {
+    setQueryBusy(true)
+    try {
+      await facilitator.run('/chat', {
         method: 'POST',
-        body: formData
+        body: JSON.stringify({ query, mode }),
       })
-      const data = await res.json()
-      if (data.status === 'success') {
-        setSkills(prev => [...prev, data.skill])
-        setInsights(prev => [{ type: 'System', text: `Skill '${data.skill}' installed` }, ...prev])
-      }
-    } catch (err) {
-      console.error("Upload failed", err)
-      setInsights(prev => [{ type: 'System', text: 'Skill upload failed' }, ...prev])
+      await facilitator.refresh()
+    } finally {
+      setQueryBusy(false)
     }
   }
 
-  // Load state from localStorage on mount
-  useEffect(() => {
-    const savedTranscript = localStorage.getItem('onf_transcript')
-    if (savedTranscript) setTranscript(JSON.parse(savedTranscript))
-
-    const savedInsights = localStorage.getItem('onf_insights')
-    if (savedInsights) setInsights(JSON.parse(savedInsights))
-  }, [])
-
-  // Save state to localStorage on change
-  useEffect(() => {
-    localStorage.setItem('onf_transcript', JSON.stringify(transcript))
-  }, [transcript])
-
-  useEffect(() => {
-    localStorage.setItem('onf_insights', JSON.stringify(insights))
-  }, [insights])
-
-  const generateReport = async (summaryText) => {
+  const createSession = async (topic) => {
+    setBusyAction('session')
     try {
-      const agenda = insights.find(i => i.type === 'Agenda')?.text || "General"
-      const res = await fetch("http://localhost:8000/report/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript: transcript,
-          insights: insights,
-          summary: summaryText,
-          topic: agenda
+      if (recorder.isRecording) recorder.stop()
+      await facilitator.run('/session/new', {
+        method: 'POST',
+        body: JSON.stringify({ topic }),
+      })
+      await facilitator.refresh()
+      setDialog(null)
+      setActiveIntelligenceTab('guidance')
+      showSuccess('Private workspace opened', topic)
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  const addKnowledge = async (payload) => {
+    setBusyAction('vault')
+    try {
+      const response = await facilitator.run('/upload-knowledge', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      await facilitator.refresh()
+      showSuccess('Knowledge indexed locally', response.message)
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  const uploadKnowledge = async (file) => {
+    setBusyAction('vault')
+    const body = new FormData()
+    body.append('file', file)
+    try {
+      const response = await facilitator.run('/upload-file', { method: 'POST', body })
+      await facilitator.refresh()
+      showSuccess('Document indexed locally', response.message)
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  const openSystem = async () => {
+    setMobileNavigation(false)
+    setDialog('system')
+    try {
+      const response = await facilitator.run('/skills')
+      setSkills(response.skills || [])
+    } catch {
+      setSkills([])
+    }
+  }
+
+  const uploadSkill = async (file) => {
+    setBusyAction('skill')
+    const body = new FormData()
+    body.append('file', file)
+    try {
+      const response = await facilitator.run('/skills/upload', { method: 'POST', body })
+      setSkills(response.skills || [])
+      await facilitator.refresh()
+      showSuccess('Facilitator skill installed', response.skill)
+    } finally {
+      setBusyAction('')
+    }
+  }
+
+  const speakInsight = async (text) => {
+    setSpeaking(true)
+    try {
+      const response = await facilitator.run('/tts/speak', {
+        method: 'POST',
+        body: JSON.stringify({ text, voice: 'EN-BR' }),
+      })
+      const audio = new Audio(audioUrl(response.audio_url))
+      await audio.play()
+    } finally {
+      setSpeaking(false)
+    }
+  }
+
+  const exportSession = async (kind) => {
+    setBusyAction(`export-${kind}`)
+    try {
+      let response
+      if (kind === 'save') {
+        response = await facilitator.run('/session/save', { method: 'POST' })
+      } else if (kind === 'json') {
+        response = await facilitator.run('/export/json', { method: 'POST' })
+      } else {
+        const summary = await facilitator.run('/summary', { method: 'POST' })
+        const payload = JSON.stringify({
+          transcript: facilitator.state.transcript,
+          insights: facilitator.state.insights,
+          summary: summary.summary,
+          topic: facilitator.state.session.topic,
         })
-      })
-      const data = await res.json()
-      if (data.status === "success") {
-        setInsights(prev => [{ type: 'System', text: `Report saved to ${data.filepath}` }, ...prev])
+        response = await facilitator.run(kind === 'pdf' ? '/report/export/pdf' : '/report/generate', {
+          method: 'POST',
+          body: payload,
+        })
       }
-    } catch (e) { console.error(e) }
-  }
-
-  useEffect(() => {
-    // Connect WebSocket on mount
-    const socket = new WebSocket("ws://localhost:8000/ws/stream")
-    socket.onopen = () => {
-      console.log("WebSocket connected")
-      // setStatus("Ready") // Don't override status here if it's "Ready" default
-    }
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'transcript') {
-        setTranscript(prev => [...prev, {
-          role: 'user',
-          text: data.text,
-          segments: data.segments
-        }])
-      } else if (data.type === 'timeline_event') {
-        setTranscript(prev => [...prev, {
-          role: 'system',
-          isEvent: true,
-          subtype: data.subtype,
-          text: data.text,
-          citation: data.citation
-        }])
-        // Also push to Insights list for sidebar
-        setInsights(prev => [data, ...prev])
-      } else if (data.type === 'voice_activity') {
-        setVadEnergy(data.energy)
-      }
-    }
-
-    socketRef.current = socket
-
-    return () => {
-      socket.close()
-    }
-  }, [])
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-      mediaRecorderRef.current = mediaRecorder
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-          socketRef.current.send(event.data)
-        }
-      }
-
-      mediaRecorder.start(1000)
-      setIsRecording(true)
-      setStatus("Listening...")
-    } catch (err) {
-      console.error("Error accessing microphone:", err)
-      setStatus(`Error: ${err.message}`)
+      showSuccess('Local export complete', response.filepath)
+      setDialog(null)
+    } finally {
+      setBusyAction('')
     }
   }
 
-  const stopRecording = async () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-      setStatus("Processing session...")
-
-      // Save Session
-      try {
-        const res = await fetch('http://localhost:8000/session/save', { method: 'POST' })
-        if (res.ok) {
-          console.log("Session saved")
-          setStatus("Session Ended")
-          setShowAnalytics(true)
-        }
-      } catch (e) {
-        console.error("Error saving session:", e)
-      }
-    }
+  const openOutcomes = () => {
+    setMobileNavigation(false)
+    setActiveIntelligenceTab(facilitator.state.decisions.length ? 'decisions' : 'actions')
+    window.requestAnimationFrame(() => document.getElementById('outcomes-panel')?.scrollIntoView({ behavior: 'smooth' }))
   }
 
-  const captureScreen = async () => {
-    try {
-      const res = await fetch('http://localhost:8000/vision/capture', { method: 'POST' })
-      const data = await res.json()
-      if (data.status === 'success') {
-        setInsights(prev => [{ type: 'System', text: `Snapshot captured: ${data.filepath.split('\\').pop()}` }, ...prev])
-      }
-    } catch (error) {
-      console.error("Capture failed:", error)
-      setInsights(prev => [{ type: 'System', text: 'Snapshot failed' }, ...prev])
-    }
-  }
-
-  const handleTTS = async (text) => {
-    try {
-      const res = await fetch("http://localhost:8000/tts/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      })
-      const data = await res.json()
-      if (data.audio_url) {
-        // Add cache buster to timestamp
-        const audio = new Audio(`${data.audio_url}?t=${Date.now()}`)
-        audio.play()
-      }
-    } catch (err) {
-      console.error("TTS Failed", err)
-    }
-  }
+  const visibleToast = actionToast || (facilitator.lastError
+    ? { type: 'error', title: 'Local capability needs attention', message: facilitator.lastError }
+    : null)
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden selection:bg-amber-500/30">
-
-      {/* Main Container */}
-      <div className="flex-1 flex overflow-hidden">
-
-        {/* Left Sidebar - Navigation & Library */}
-        <div className="w-64 bg-black flex flex-col border-r border-white/5 hidden md:flex">
-          <div className="p-6 flex flex-col h-full">
-            <div className="mb-8">
-              <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 bg-accent-gold rounded-full flex items-center justify-center text-black">
-                  <Zap size={18} fill="currentColor" />
-                </div>
-                ONF <span className="text-accent-gold">GOLD</span>
-              </h1>
-
-              <nav className="space-y-2 mt-2">
-                <div className="sidebar-item active">
-                  <Activity size={18} />
-                  <span>Live Session</span>
-                </div>
-                <div className="sidebar-item" onClick={() => setShowAnalytics(true)}>
-                  <BarChart3 size={18} />
-                  <span>Analytics</span>
-                </div>
-                <div className="sidebar-item opacity-50 cursor-not-allowed" title="Coming Soon">
-                  <Clock size={18} />
-                  <span>History</span>
-                </div>
-                <div className="sidebar-item opacity-50 cursor-not-allowed" title="Coming Soon">
-                  <Settings size={18} />
-                  <span>Settings</span>
-                </div>
-              </nav>
-            </div>
-
-            {/* Skills & Vault */}
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
-              <div>
-                <div className="flex items-center justify-between px-4 mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Skills</span>
-                  <button onClick={() => fileInputRef.current.click()} className="text-text-muted hover:text-white transition-colors">
-                    <Zap size={12} />
-                  </button>
-                  <input type="file" ref={fileInputRef} className="hidden" accept=".md" onChange={handleSkillUpload} />
-                </div>
-                <div className="space-y-1 px-2">
-                  {skills.map((skill, i) => (
-                    <div key={i} className="text-xs py-2 px-3 rounded-md hover:bg-white/5 text-text-secondary flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-accent-emerald"></div>
-                      {skill}
-                    </div>
-                  ))}
-                  {skills.length === 0 && <p className="text-[10px] text-text-muted italic px-3">No custom skills</p>}
-                </div>
-              </div>
-
-              <div>
-                <div className="px-4 mb-4">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Knowledge Vault</span>
-                </div>
-                <div className="px-4">
-                  <div className="p-3 rounded-xl bg-bg-surface border border-white/5 focus-within:border-accent-gold/50 transition-all">
-                    <textarea
-                      placeholder="Feed memory..."
-                      className="w-full bg-transparent border-none text-xs text-text-primary focus:outline-none resize-none h-20"
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (!e.target.value.trim()) return;
-                          try {
-                            await fetch("http://localhost:8000/upload-knowledge", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ text: e.target.value })
-                            });
-                            setInsights(prev => [{ type: 'System', text: 'Memory updated' }, ...prev]);
-                            e.target.value = "";
-                          } catch (err) { console.error(err); }
-                        }
-                      }}
-                    />
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
-                      <span className="text-[9px] text-text-muted">Enter to save</span>
-                      <label className="cursor-pointer text-accent-gold hover:text-white transition-colors">
-                        <input type="file" className="hidden" accept=".pdf,.txt" onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (!file) return;
-                          setInsights(prev => [{ type: 'System', text: `Syncing ${file.name}...` }, ...prev]);
-                          const formData = new FormData();
-                          formData.append("file", file);
-                          try {
-                            const res = await fetch("http://localhost:8000/upload-file", { method: "POST", body: formData });
-                            if (res.ok) setInsights(prev => [{ type: 'System', text: 'Vault updated' }, ...prev]);
-                          } catch (err) { console.error(err); }
-                        }} />
-                        <MessageSquare size={12} />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Center Stage - Real-Time Transcript */}
-        <div className="flex-1 bg-gradient-to-b from-bg-surface to-bg-base overflow-y-auto no-scrollbar relative flex flex-col items-center">
-
-          {/* Stage Header */}
-          <div className="max-w-4xl w-full px-8 pt-12 pb-8 sticky top-0 z-20 bg-gradient-to-b from-bg-surface to-transparent">
-            <div className="flex items-end justify-between">
-              <div>
-                <h2 className="text-4xl font-extrabold tracking-tight text-white mb-2">
-                  {activeTab === 'live' ? 'Live Facilitation' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                </h2>
-                <div className="flex items-center gap-3">
-                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest ${isRecording ? 'bg-red-500/10 text-red-500 animate-pulse' : 'bg-accent-emerald/10 text-accent-emerald'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isRecording ? 'bg-red-500' : 'bg-accent-emerald'}`}></div>
-                    {status}
-                  </div>
-                  <span className="text-text-muted text-xs">• Session ID: {Math.random().toString(36).substring(7).toUpperCase()}</span>
-                </div>
-              </div>
-
-              {/* Visual VAD */}
-              <VADIndicator energy={vadEnergy} isRecording={isRecording} />
-            </div>
-          </div>
-
-          <div className="max-w-4xl w-full px-8 pb-48 pt-12 space-y-2">
-            {transcript.length === 0 && !isRecording && (
-              <div className="h-64 flex flex-col items-center justify-center text-text-muted space-y-4">
-                <div className="w-16 h-16 rounded-full bg-bg-elevated flex items-center justify-center">
-                  <Mic size={32} />
-                </div>
-                <p className="font-medium">Waiting to capture the conversation...</p>
-              </div>
-            )}
-
-            {transcript.map((msg, idx) => (
-              <TranscriptItem key={idx} msg={msg} isActive={idx === transcript.length - 1} />
-            ))}
-            <div ref={transcriptEndRef} />
-          </div>
-        </div>
-
-        {/* Right Panel - Proactive Insights (Now Playing) */}
-        <div className="w-96 bg-black border-l border-white/5 hidden lg:flex flex-col">
-          <div className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-
-            {/* Tab Switcher */}
-            <div className="p-1 rounded-xl bg-bg-surface flex">
-              {[
-                { id: 'live', label: 'Live', icon: Activity },
-                { id: 'actions', label: 'Actions', icon: Zap },
-                { id: 'risks', label: 'Risks', icon: AlertTriangle }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${activeTab === tab.id ? 'bg-accent-gold text-black gold-glow' : 'text-text-secondary hover:text-white hover:bg-white/5'}`}
-                >
-                  <tab.icon size={16} fill={activeTab === tab.id ? "currentColor" : "none"} />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Dynamic Insights Feed */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                  {activeTab === 'live' ? 'Now Playing' : `Detected ${activeTab}`}
-                </span>
-                <Activity size={12} className="text-accent-gold" />
-              </div>
-
-              {activeTab === 'live' && insights.map((insight, i) => (
-                <div key={i} className="premium-card p-4 group">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${insight.type === 'Proactive' ? 'bg-accent-gold/10 text-accent-gold' : 'bg-white/5 text-text-muted'}`}>
-                        {insight.type === 'Proactive' ? <Zap size={12} fill="currentColor" /> : <Activity size={12} />}
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">{insight.type}</span>
-                    </div>
-                    <button onClick={() => handleTTS(insight.text)} className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-white">
-                      <Play size={12} fill="currentColor" />
-                    </button>
-                  </div>
-                  <p className="text-sm leading-relaxed text-text-primary">{insight.text}</p>
-                  {insight.citation && (
-                    <div className="mt-3 text-[10px] font-mono text-accent-gold/60 flex items-center gap-2">
-                      <ChevronRight size={10} /> {insight.citation}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {activeTab === 'actions' && (
-                <div className="space-y-4">
-                  <button
-                    onClick={async () => {
-                      const res = await fetch("http://localhost:8000/action-items", { method: "POST" });
-                      const data = await res.json();
-                      if (data.action_items) setInsights(prev => [{ type: 'Proactive', text: `Action Item: ${data.action_items}` }, ...prev]);
-                    }}
-                    className="w-full py-4 rounded-xl border border-dashed border-white/10 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:border-accent-gold hover:text-white transition-all"
-                  >
-                    Detect Action Items
-                  </button>
-                  {insights.filter(i => i.text.toLowerCase().includes('action') || i.type === 'Proactive').map((insight, i) => (
-                    <div key={i} className="premium-card p-4">
-                      <p className="text-sm text-text-primary">{insight.text}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to live workspace</a>
+      <AppHeader
+        connection={facilitator.connection}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onExport={() => setDialog('export')}
+        onToggleNavigation={() => setMobileNavigation(true)}
+      />
+      <div className="app-body">
+        <Sidebar
+          capabilities={facilitator.capabilities}
+          mobileOpen={mobileNavigation}
+          onClose={() => setMobileNavigation(false)}
+          onOpenVault={() => { setMobileNavigation(false); setDialog('vault') }}
+          onOpenSystem={openSystem}
+          onOpenOutcomes={openOutcomes}
+          onRunDemo={runDemo}
+          demoRunning={busyAction === 'demo' || facilitator.state.session.status === 'showcase'}
+        />
+        <div className="workspace-layout">
+          <TranscriptWorkspace
+            state={facilitator.state}
+            connection={facilitator.connection}
+            isRecording={recorder.isRecording}
+            segmentsSent={recorder.segmentsSent}
+            onToggleRecording={recorder.isRecording ? recorder.stop : recorder.start}
+            onRunDemo={runDemo}
+            onAsk={askFacilitator}
+            onNewSession={() => setDialog('session')}
+            queryBusy={queryBusy}
+          />
+          <IntelligencePanel
+            state={facilitator.state}
+            activeTab={activeIntelligenceTab}
+            onTabChange={setActiveIntelligenceTab}
+            onSpeak={speakInsight}
+            speaking={speaking}
+          />
         </div>
       </div>
 
-      {/* Bottom Control Bar - "The Player" */}
-      <div className="h-24 bg-bg-base border-t border-white/5 px-8 flex items-center justify-between z-30">
+      {dialog === 'session' && <NewSessionDialog onClose={() => setDialog(null)} onCreate={createSession} busy={busyAction === 'session'} />}
+      {dialog === 'vault' && <VaultDialog capabilities={facilitator.capabilities} onClose={() => setDialog(null)} onAddNote={addKnowledge} onUploadFile={uploadKnowledge} busy={busyAction === 'vault'} />}
+      {dialog === 'system' && <SystemDialog capabilities={facilitator.capabilities} skills={skills} onUploadSkill={uploadSkill} onClose={() => setDialog(null)} busy={busyAction === 'skill'} />}
+      {dialog === 'export' && <ExportDialog onClose={() => setDialog(null)} onExport={exportSession} busy={busyAction.startsWith('export-')} />}
 
-        {/* Playback Info */}
-        <div className="w-1/4 flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-lg bg-bg-surface flex items-center justify-center transition-all ${isRecording ? 'gold-glow' : ''}`}>
-            <Brain size={28} className={isRecording ? 'text-accent-gold' : 'text-text-muted'} />
-          </div>
-          <div>
-            <p className="text-sm font-bold truncate max-w-[200px]">{isRecording ? "Live Facilitation Active" : "Session Paused"}</p>
-            <p className="text-xs text-text-muted">On-Device Intelligence</p>
-          </div>
-        </div>
-
-        {/* Player Controls */}
-        <div className="w-1/2 flex flex-col items-center gap-3">
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => setIsDeepThink(!isDeepThink)}
-              className={`control-btn ${isDeepThink ? 'text-accent-gold border-accent-gold' : 'text-text-muted'}`}
-              title="Deep Reasoning (Toggle)"
-            >
-              <Zap size={20} fill={isDeepThink ? "currentColor" : "none"} />
-            </button>
-
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`hero-btn rounded-full shadow-2xl flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-black hover:scale-105'}`}
-            >
-              {isRecording ? <Square size={24} fill="currentColor" /> : <Mic size={24} fill="currentColor" />}
-            </button>
-
-            <button onClick={captureScreen} className="control-btn text-text-muted hover:text-white" title="Screen Vision">
-              <Square size={20} />
-            </button>
-          </div>
-
-          {/* Progress Slider (Mock for aesthetic) */}
-          <div className="w-full max-w-md flex items-center gap-3">
-            <span className="text-[10px] text-text-muted font-mono">0:00</span>
-            <div className="flex-1 h-1 bg-white/10 rounded-full group cursor-pointer relative overflow-hidden">
-              <div className={`h-full bg-accent-gold transition-all duration-1000 ${isRecording ? 'w-full animate-pulse' : 'w-0'}`}></div>
-            </div>
-            <span className={`text-[10px] font-mono transition-colors ${isRecording ? 'text-red-500 font-bold animate-pulse' : 'text-text-muted'}`}>
-              {isRecording ? 'REC' : 'LIVE'}
-            </span>
-          </div>
-        </div>
-
-        {/* Secondary Controls */}
-        <div className="w-1/4 flex items-center justify-end gap-6">
-          <button
-            onClick={async () => {
-              setStatus("Generating PDF...");
-              try {
-                const agenda = insights.find(i => i.type === 'Agenda')?.text || "General"
-                const summary = insights.find(i => i.type === 'Summary')?.text || ""
-                const res = await fetch("http://localhost:8000/report/export/pdf", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    transcript,
-                    insights,
-                    summary,
-                    topic: agenda
-                  })
-                });
-                const data = await res.json();
-                if (data.status === "success") {
-                  setInsights(prev => [{ type: 'System', text: `PDF Report saved to ${data.filepath}` }, ...prev]);
-                }
-                setStatus("Ready");
-              } catch (e) {
-                console.error(e);
-                setStatus("Error generating PDF");
-              }
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-600 text-xs font-bold text-neutral-300 hover:border-white hover:text-white transition-colors"
-          >
-            <Power size={14} className="text-red-400" /> EXPORT PDF
-          </button>
-          <button
-            onClick={async () => {
-              setStatus("Summarizing...");
-              try {
-                const res = await fetch("http://localhost:8000/summary", { method: "POST" });
-                const data = await res.json();
-                setInsights(prev => [{ type: 'Summary', text: data.summary }, ...prev]);
-                setStatus("Ready");
-              } catch (e) { console.error(e); }
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-600 text-xs font-bold text-neutral-300 hover:border-white hover:text-white transition-colors"
-          >
-            <List size={14} /> GENERATE SUMMARY
-          </button>
-          <button className="text-text-muted hover:text-white transition-colors" onClick={() => setShowAnalytics(true)}>
-            <BarChart3 size={20} />
-          </button>
-        </div>
-      </div>
-
-      <ChatWidget />
-      <AnalyticsDashboard
-        isOpen={showAnalytics}
-        onClose={() => setShowAnalytics(false)}
-        transcript={transcript}
-        actionItems={insights
-          .filter(i => (i.type === 'Proactive' || i.type === 'System') && i.text.toLowerCase().includes('action'))
-          .map(i => i.text)}
+      <Toast
+        toast={visibleToast}
+        onDismiss={() => {
+          setActionToast(null)
+          facilitator.clearError()
+        }}
       />
     </div>
   )
-
 }
 
 export default App

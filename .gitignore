@@ -13,9 +13,11 @@ venv/
 .venv/
 env/
 
-# IDE
+# IDE and local agent customizations
 .vscode/
 .idea/
+.agent/
+ .agent/
 *.swp
 *.swo
 
@@ -23,30 +25,23 @@ env/
 node_modules/
 frontend/node_modules/
 
-# Model weights & caches (large binary files)
+# Model weights and caches
 models/
 .olive-cache/
 outputs_v2/
 processed/
+audio_models/
 
-# MeloTTS and OpenVoice submodules (large)
-modules/MeloTTS/
-modules/OpenVoice/
-
-# ChromaDB local database
+# Local application data
 chroma_db/
-
-# Session data
 sessions/
+vault.txt
 
 # Audio files
 *.wav
 *.mp3
 *.ogg
 *.flac
-
-# Knowledge vault (contains personal data)
-vault.txt
 
 # Test artifacts
 rag_benchmark_results.json
@@ -64,6 +59,3 @@ desktop.ini
 
 # Logs
 *.log
-
-# Package lock (frontend has its own)
-package-lock.json

@@ -1,61 +1,63 @@
-# Offline Neural Facilitator (ONF) - Roadmap v2.0
-**Next Generation Features: Visualization, Context, and Deep Customization**
+# ONF v2 Roadmap
 
-This roadmap outlines the path from v1.2.0 to v2.0, focusing on advanced RAG, dynamic skills, and rich visual interfaces.
+The product north star is defined in [COMMANDERS_INTENT.md](COMMANDERS_INTENT.md). Roadmap items are valuable only when they improve the loop **capture → understand → intervene → decide → export**.
 
-## Phase 10: Core Architecture Refactor (Foundry Local)
-**Goal**: Offline-first, low-latency intelligence via `foundry-local-sdk`.
-- [x] **Foundry Engine**: Replaced direct ONNX loading with `FoundryEngine` wrapping `foundry-local-sdk`.
-- [x] **Dual Model Support**: Standardized Reflex (Qwen) and Deep Reason (DeepSeek) interfaces.
-- [x] **Vision Support**: Added `/vision/capture` endpoint and UI integration for screenshot context.
-- [x] **FastAPI Migration**: Ported legacy loop to robust ASGI backend.
+## v2.0 showcase foundation — complete
 
-## Phase 11: Advanced Knowledge Engine (VectorDB)
-**Goal**: Move beyond simple text matching to a robust, scalable vector store.
-- [x] **Infrastructure**: Replace `SentenceTransformer`+`pkl` with **ChromaDB** or **Qdrant** (Local).
-- [x] **Ingestion Pipeline**: Support PDF, Docx, and Markdown ingestion with metadata extraction (page numbers, authors).
-- [x] **Hybrid Search**: Combine keyword search (BM25) with semantic search (Embeddings). (Metadata Citations Implemented).
-- [x] **Hover Citations**: UI extracts source metadata to show "Page 5" on hover over an insight.
+- [x] Rebuild the UI as a responsive, accessible private meeting workspace.
+- [x] Make backend import and startup independent of heavyweight model loading.
+- [x] Publish honest capability readiness instead of failing the whole application.
+- [x] Replace malformed partial-WebM buffering with complete audio segments.
+- [x] Establish one canonical session state and WebSocket event contract.
+- [x] Separate guidance, decisions, actions and risks.
+- [x] Add a deterministic presenter scenario with camera-safe content.
+- [x] Add local save, JSON, Markdown and PDF workflows.
+- [x] Replace download-prone default embeddings with a network-free local index.
+- [x] Standardize and load five bundled facilitator and incident-response skills.
+- [x] Resolve Foundry model aliases against available device-specific model IDs.
 
-## Phase 12: Dynamic Skills System (Anthropic Standard)
-**Goal**: Modular, importable personality and capability packages.
-- [x] **Standard Definition**: Adopt `SKILL.md` format (YAML Frontmatter + Instructions).
-- [x] **Skill Loader**:
-    - Scan `skills/` directories.
-    - Load lightweight metadata (`name`, `description`) into System Prompt.
-    - "Just-in-Time" loading of full instructions when triggered.
-- [x] **Context Awareness**: Auto-switch active skills based on conversation keywords (e.g., "Legal" -> Load Legal Reviewer).
-- [x] **Import UI**: "Drag & Drop" a skill folder to install it.
+## v2.1 reliability — next
 
-## Phase 13: Enhanced Visualization & UI
-**Goal**: Turn the meeting into a visual dashboard.
-- [x] **Timeline UI**: Visualize the meeting as a chronological stream (Spotify Lyrics style).
-- [x] **Live Marker**: Auto-scroll to current speaker/topic.
-- [x] **Keyword Highlighting**: Fade out irrelevant text, highlight action items/risks. (Implicit in the new card design which highlights Proactive insights).
-- [x] **Sidebar Redesign**: Move from simple list to "Now Playing" insights dashboard.
-- [x] **Premium Theme**: "Spotify Gold" aesthetic." with the excerpt.
-- [x] **Sidebar Revamp**: Tabs for "Live", "Action Items", "Risks".
+- [ ] Validate live microphone capture across Edge and Chrome for 60-minute sessions.
+- [ ] Add a local audio fixture suite covering silence, speech, reconnect and malformed input.
+- [ ] Add opt-in, fully local speaker diarization with measured accuracy and explicit consent.
+- [ ] Add structured application logs with automatic sensitive-text suppression.
+- [ ] Add backend unit and contract tests to CI.
+- [ ] Add session history with reopen, rename and delete.
+- [ ] Package a signed Windows installer and first-run readiness wizard.
 
-## Phase 14: Interactive Agent & Audio
-**Goal**: Two-way conversation and accessibility.
-- [x] **Agent Chat Mode**:
-    - "Ask the Facilitator" chat box (separate from meeting transcript).
-    - Q&A against the current session + Vault.
-- [x] **Text-to-Speech (TTS)**:
-    - Re-integrate MeloTTS/OpenVoice.
-    - "Read Insight": Button to have the AI speak the insight into the user's earpiece.
-- [ ] **Voice Personalities**: Selectable voices for the Facilitator. (British Voice configured).
+## v2.2 facilitation quality
 
-## Phase 15: Session Intelligence & Export
-**Goal**: Enterprise-grade records and analytics.
-- [x] **Session Logger**: Full JSON dumps of every event (transcript, insight, mouse click).
-- [x] **Export Formats**: JSON, CSV, PDF (Report).
-- [x] **Action Item Extractor**: Dedicated NLP pass to extract owners and due dates.
-- [x] **Analytics Dashboard**: "Meeting Health" score, talk time distribution (Diarization metrics).
-- [x] **The Smart Loop**: Implemented proactive Cognitive Load and Conflict detection logic.
-- [x] **Specialized Skills**: Added Strategy Consultant and Crisis Manager personas.
+- [ ] Add intervention cooldowns configurable by meeting type.
+- [ ] Measure citation precision and suppress weak knowledge matches.
+- [ ] Add agenda objectives and explicit decision gates.
+- [ ] Improve owner and due-date extraction with structured local model output.
+- [ ] Add user-editable decisions and actions with an audit trail.
+- [ ] Add skill activation explanations and per-session skill controls.
 
-## Phase 16: Multi-Modal Future
-**Goal**: Integration of video and advanced diarization.
-- [ ] **Video Analysis**: Real-time expression and engagement tracking.
-- [ ] **Advanced Diarization**: Multi-camera speaker identification and visual cues.
+## v2.3 deployment hardening
+
+- [ ] Encrypt sensitive local state or integrate with Windows-protected storage.
+- [ ] Add configurable retention and secure deletion.
+- [ ] Add signed export manifests and evidence hashes.
+- [ ] Complete threat modeling for local uploads, prompts and report rendering.
+- [ ] Validate offline operation with network interfaces disabled.
+
+## v2.4 mobile and edge research
+
+- [ ] Extract a platform-neutral session and event contract package.
+- [ ] Prototype the responsive workspace inside a native mobile WebView/PWA shell.
+- [ ] Benchmark quantized reflex, ASR, and retrieval models on representative phone hardware.
+- [ ] Evaluate Foundry Local support by target platform and ONNX Runtime Mobile where a native Foundry host is unavailable.
+- [ ] Replace desktop file paths and ChromaDB with sandboxed mobile storage and a mobile-safe local index.
+- [ ] Measure battery, thermals, memory pressure, and background microphone constraints before claiming native mobile support.
+
+## Future, not currently claimed
+
+- Real speaker identity
+- Video or expression analysis
+- Multi-camera cues
+- Shared cloud workspaces
+- Autonomous consequential decisions
+
+These remain out of scope until the core meeting loop is measured, reliable and trustworthy.

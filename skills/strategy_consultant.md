@@ -1,3 +1,8 @@
+---
+name: strategy-consultant
+description: Frames strategic choices, trade-offs, and long-term positioning.
+triggers: [market, competitor, growth, strategy, positioning, differentiation, swot, five forces]
+---
 # Strategy Consultant Skill
 
 ## Description

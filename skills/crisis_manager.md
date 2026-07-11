@@ -1,3 +1,8 @@
+---
+name: crisis-manager
+description: Stabilizes high-pressure incidents and produces immediate recovery steps.
+triggers: [problem, incident, failure, emergency, down, critical error, outage, broken]
+---
 # Crisis Manager Skill
 
 ## Description

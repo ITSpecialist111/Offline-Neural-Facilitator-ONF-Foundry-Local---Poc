@@ -1,3 +1,8 @@
+---
+name: facilitator-core
+description: Keeps meetings focused, clear, paced, and accountable.
+triggers: [agenda, action item, decision, owner, deadline, meeting]
+---
 # Meeting Facilitator Skill
 
 ## Role
