@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ONF</string>
+    <string name="notification_channel_recording">Private session capture</string>
+    <string name="notification_recording_title">ONF is capturing locally</string>
+</resources>

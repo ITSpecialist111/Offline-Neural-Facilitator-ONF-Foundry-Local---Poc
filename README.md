@@ -4,9 +4,10 @@
 
 ### Private meeting intelligence that listens, reasons, facilitates, and records outcomes on your device
 
-**React 19 · FastAPI · Microsoft Foundry Local · Qwen · DeepSeek · faster-whisper · ChromaDB · MeloTTS**
+**Windows:** React · FastAPI · Foundry Local · Qwen · DeepSeek · Whisper<br>
+**Android:** Kotlin · Jetpack Compose · LiteRT-LM · Gemma 4 · Android Keystore
 
-[Why ONF?](#why-onf) · [Architecture](#how-it-is-put-together) · [Dragon comparison](#dragon-copilot-and-onf-different-offline-boundaries) · [Quick start](#quick-start) · [Mobile and edge](#from-desktop-to-mobile-and-edge) · [Demo](#showcase-mode)
+[Why ONF?](#why-onf) · [Architecture](#how-it-is-put-together) · [Dragon comparison](#dragon-copilot-and-onf-different-offline-boundaries) · [Android](#android-flagship-edition) · [Quick start](#quick-start) · [Demo](#showcase-mode)
 
 </div>
 
@@ -50,6 +51,7 @@ The governing product principles are documented in [COMMANDERS_INTENT.md](COMMAN
 | Speech output | English MeloTTS | Optional, lazy-loaded, and generated locally |
 | Session records | JSON + ReportLab + Markdown/CSV writers | Local session snapshots and portable reports |
 | Presenter mode | Deterministic backend scenario | Demonstrates the complete product loop even while models are warming |
+| Android flagship alpha | Native Kotlin + Compose + LiteRT-LM | Fold-aware workspace, encrypted foreground capture, local SQLite/RAG/skills, imported Gemma 4, and no internet permission |
 
 ## How it is put together
 
@@ -185,7 +187,7 @@ ONF is designed around a visible local trust boundary:
 
 Initial setup can access the network to install packages, download models, and obtain hardware execution providers. Foundry Local may also refresh catalog metadata when online. Cached model inference itself is local.
 
-Application files are not encrypted by ONF. Use BitLocker or an equivalent encrypted storage policy for sensitive deployments. The current code/configuration audit is in [privacy_audit_report.md](privacy_audit_report.md).
+Desktop application files are not encrypted by ONF; use BitLocker or an equivalent encrypted storage policy for sensitive deployments. The Android alpha encrypts each audio segment with AES-256-GCM and a non-exportable Android Keystore key, while its session database, knowledge, and imported models rely on the Android application sandbox and device encryption. The current desktop code/configuration audit is in [privacy_audit_report.md](privacy_audit_report.md).
 
 ## Dragon Copilot and ONF: different offline boundaries
 
@@ -227,37 +229,49 @@ The strategic distinction is concise:
 
 > **Dragon Copilot provides resilient offline capture before cloud processing. ONF is designed for offline capture, transcription, retrieval, reasoning, facilitation, and export.**
 
-## From desktop to mobile and edge
+## Android flagship edition
 
-The core premise of ONF is broader than one Windows workstation: **small, quantized models can move to the user instead of moving the user's meeting to a remote model**.
+The repository now includes a standalone native Android alpha under [android](android). It is not a remote control for the desktop service and does not embed Python, FastAPI, Foundry Local, or a WebView.
 
-Microsoft describes Foundry Local as a lightweight on-device runtime built on ONNX Runtime, with model variants selected for the available CPU, GPU, or NPU. The current Foundry Local documentation supports Windows, macOS on Apple silicon, and Linux, and its SDK is designed for device-hosted client applications.
+The Android trust boundary is the phone itself:
 
-### What is portable already
+```mermaid
+flowchart LR
+  MIC[Android microphone] --> CAPTURE[Foreground AudioRecord service]
+  CAPTURE --> CRYPTO[AES-256-GCM segments\nAndroid Keystore]
+  CRYPTO --> PRIVATE[App-private encrypted spool]
+  PRIVATE --> GEMMA[Gemma 4 audio/text\nLiteRT-LM]
+  GEMMA --> ORCH[Native facilitator\ndeterministic outcomes first]
+  KNOWLEDGE[SQLite knowledge vault\n384D local hashing] --> ORCH
+  SKILLS[Markdown skills] --> ORCH
+  ORCH --> UI[Adaptive Compose workspace]
+  ORCH --> EXPORT[User-selected JSON/Markdown export]
+```
 
-The project is separated into boundaries that can move independently:
+### Implemented Android capabilities
 
-1. **Presentation** — the React interface is responsive and can be hosted in a desktop shell, tablet browser, PWA, or native WebView.
-2. **Session contract** — transcript, insight, decision, action, and risk events are plain JSON over REST/WebSocket.
-3. **Model contract** — the application uses OpenAI-compatible requests and Foundry model aliases rather than hard-coding one accelerator.
-4. **Model format** — Foundry's optimized models run through ONNX Runtime, whose model format is designed for execution across cloud, desktop, edge, and mobile-class hardware.
-5. **Storage** — sessions and knowledge are local and can be mapped to SQLite or a platform sandbox.
+- native Kotlin and Jetpack Compose interface;
+- unfolded two-pane workspace and Fold cover-display navigation;
+- persistent sessions, transcript, guidance, decisions, actions, risks, titles, and metrics;
+- section-cited SQLite knowledge retrieval and the Northstar demonstration pack;
+- five local Markdown facilitator skills;
+- real foreground microphone capture in five-second PCM/WAV segments;
+- atomic AES-256-GCM recording envelopes with independent Keystore-generated IVs;
+- imported `.litertlm` Gemma 4 models through LiteRT-LM 0.14.0;
+- GPU-first inference with CPU fallback;
+- optional Gemma multimodal transcription of encrypted audio segments;
+- local JSON and Markdown export;
+- no `INTERNET` permission, telemetry, cloud backup, or device-transfer backup.
 
-### What a native phone port still requires
+The Android model is deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; either can be imported through the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format.
 
-This repository is the **Windows reference implementation**. It is browser-responsive, but it is not currently an installable iOS or Android application. A native mobile edition would need to:
+### Validation status
 
-- replace the PowerShell/Python host with a platform-native process or supported embedded runtime;
-- use Foundry Local where the target platform is supported, or package compatible quantized ONNX models with ONNX Runtime Mobile;
-- replace ChromaDB with a mobile-safe local index or SQLite implementation;
-- use the platform microphone, background-execution, storage, and permission APIs;
-- select smaller ASR/TTS models appropriate to phone memory, battery, and thermal limits;
-- benchmark latency and quality on representative Apple, Qualcomm, MediaTek, and Samsung hardware;
-- preserve the same local-only consent, retention, and export controls.
+The native alpha has been built, installed, and exercised on an Android 16/API 36 Fold-class emulator in both open and closed states. Automated tests cover launch, the complete Code Blue workflow, deterministic outcome extraction, RAG, serialization, WAV generation, tamper detection, Android Keystore encryption/decryption, and a real foreground microphone segment.
 
-So the architecture is intentionally **mobile-capable in premise and portable in layers**, while the code in this repository remains an honestly scoped Windows implementation. No claim is made that this exact `.ps1` + FastAPI stack can be installed unchanged on every phone.
+The sideload APK has also passed signature verification, Android lint, 16 KB ZIP alignment, and 16 KB ELF alignment for every arm64 native library. Its manifest contains microphone and foreground-service permissions but no internet permission.
 
-For background on portable model execution, see [ONNX and cross-platform inference](https://learn.microsoft.com/azure/machine-learning/concept-onnx) and the [Foundry Local SDK reference](https://learn.microsoft.com/azure/foundry-local/reference/reference-sdk-current).
+The emulator cannot establish Fold7-specific Gemma latency, sustained battery draw, thermal behavior, microphone quality, or Samsung lifecycle behavior. Those measurements begin when the physical Fold7 is connected and authorized over ADB. Build, model-import, and sideload instructions are in [android/README.md](android/README.md).
 
 ## Quick start
 
@@ -366,6 +380,14 @@ frontend/
   src/hooks/useSegmentRecorder.js Complete browser audio segments
   src/lib/api.js                  Local API configuration
 
+android/
+  app/src/main/java/              Native facilitator, storage, audio, AI and Compose UI
+  app/src/main/assets/            Bundled skills and cited demonstration evidence
+  app/src/test/                   Deterministic JVM tests
+  app/src/androidTest/            Fold UI, Keystore and foreground-capture tests
+  scripts/                        Build, emulator and physical-device sideload helpers
+  README.md                       Android architecture, model import and Fold7 guide
+
 scripts/
   setup.ps1                       Reproducible core/optional-audio setup
   start.ps1                       Foundry + backend + frontend launcher
@@ -383,11 +405,13 @@ Large models, audio checkpoints, local knowledge, generated speech, ChromaDB dat
 
 ## Current limitations
 
-- The reference launcher and tested implementation target Windows.
-- Native iOS and Android packaging is a future port, not a current deliverable.
+- The desktop reference launcher targets Windows; Android is a separate native alpha.
+- Physical Fold7 Gemma performance, battery, thermals, and long-session microphone behavior still require device benchmarking.
+- The Android APK imports compatible `.litertlm` models but intentionally does not bundle multi-gigabyte Gemma weights.
+- Native iOS packaging is not a current deliverable.
 - Speaker identity/diarization is not currently claimed or included.
 - Feature-hash retrieval is intentionally lightweight and is less semantically capable than a neural embedding model.
-- English is the only supported local TTS language in this build.
+- Android TTS is not included in the alpha; English is the only supported local desktop TTS language.
 - Model quality and latency depend on the selected device variant and available memory.
 - Foundry Local and its CLI are evolving; consult the current Microsoft documentation when upgrading.
 

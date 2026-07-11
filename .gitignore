@@ -25,6 +25,18 @@ env/
 node_modules/
 frontend/node_modules/
 
+# Android / Gradle
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/build/
+android/artifacts/
+android/captures/
+android/*.jks
+android/*.keystore
+android/app/release/
+*.litertlm
+
 # Model weights and caches
 models/
 .olive-cache/
