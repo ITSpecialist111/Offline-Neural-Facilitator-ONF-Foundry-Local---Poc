@@ -3,6 +3,7 @@ package com.offlineneuralfacilitator.onf
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.offlineneuralfacilitator.onf.ai.FoundryCompanionDetector
+import com.offlineneuralfacilitator.onf.ai.GalleryDetector
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -17,5 +18,13 @@ class FoundryCompanionDetectorTest {
         assumeTrue("Official Foundry Local Android companion is not installed.", status.installed)
         assertTrue(status.versionName?.isNotBlank() == true)
         assertTrue((status.versionCode ?: 0) > 0)
+    }
+
+    @Test
+    fun detectsGoogleAiEdgeGalleryWithoutReadingItsPrivateModels() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val status = GalleryDetector.inspect(context)
+        assumeTrue("Google AI Edge Gallery is not installed.", status.installed)
+        assertTrue(status.versionName?.isNotBlank() == true)
     }
 }

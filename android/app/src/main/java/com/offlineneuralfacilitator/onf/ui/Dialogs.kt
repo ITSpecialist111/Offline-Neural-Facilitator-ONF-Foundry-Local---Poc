@@ -75,6 +75,10 @@ internal fun SystemSheet(
     onDismiss: () -> Unit,
     onImportModel: () -> Unit,
     onImportKnowledge: () -> Unit,
+    onSelectModel: (String) -> Unit,
+    onRemoveModel: (String) -> Unit,
+    onOpenFoundryCompanion: () -> Unit,
+    onRequestFoundrySdk: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -120,6 +124,40 @@ internal fun SystemSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (uiState.foundryCompanion.installed) {
+                            OutlinedButton(onClick = onOpenFoundryCompanion) {
+                                Text("OPEN COMPANION")
+                            }
+                        }
+                        TextButton(onClick = onRequestFoundrySdk) {
+                            Text("REQUEST SDK ACCESS")
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            OnfCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("Existing mobile model library", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        uiState.gallery.summary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        if (uiState.gallery.installed) {
+                            "Gallery-downloaded models are isolated in Gallery's Android sandbox. ONF cannot reuse them in place; import the same $MODEL_PACK_EXTENSION file, or use development-only ADB provisioning."
+                        } else {
+                            "ONF can retain multiple compatible $MODEL_PACK_EXTENSION packs in its own private model library."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
 
@@ -155,6 +193,63 @@ internal fun SystemSheet(
                     }
                     Spacer(Modifier.height(11.dp))
                     Text(uiState.llm.message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    if (uiState.deviceModels.isEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "No private model packs are installed in ONF.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    } else {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "ONF PRIVATE MODEL LIBRARY",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 9.sp,
+                        )
+                        uiState.deviceModels.forEachIndexed { index, model ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            } else {
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            val active = model.path == uiState.selectedModelPath
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(model.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(
+                                        "${compactBytes(model.sizeBytes)}${if (active) " · active" else ""}",
+                                        color = if (active) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 11.sp,
+                                    )
+                                }
+                                if (active) {
+                                    StatusPill("Active")
+                                } else {
+                                    TextButton(
+                                        onClick = { onSelectModel(model.path) },
+                                        enabled = uiState.busyLabel == null,
+                                    ) {
+                                        Text("LOAD")
+                                    }
+                                    TextButton(
+                                        onClick = { onRemoveModel(model.path) },
+                                        enabled = uiState.busyLabel == null,
+                                    ) {
+                                        Text("REMOVE", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     uiState.modelImportProgress?.let { progress ->
                         Spacer(Modifier.height(12.dp))
                         LinearProgressIndicator(
@@ -165,7 +260,7 @@ internal fun SystemSheet(
                     }
                     Spacer(Modifier.height(14.dp))
                     Button(onClick = onImportModel, enabled = uiState.busyLabel == null) {
-                        Text(if (uiState.llm.phase == EnginePhase.READY) "REPLACE .LITERTLM MODEL" else "IMPORT GEMMA MODEL")
+                        Text(if (uiState.deviceModels.isEmpty()) "IMPORT GEMMA MODEL" else "IMPORT ANOTHER MODEL")
                     }
                     Spacer(Modifier.height(7.dp))
                     Text(
@@ -222,3 +317,5 @@ private fun PrivacyFact(title: String, detail: String) {
         }
     }
 }
+
+private const val MODEL_PACK_EXTENSION = ".litertlm"

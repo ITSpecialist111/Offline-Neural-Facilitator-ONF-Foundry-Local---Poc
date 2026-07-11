@@ -60,6 +60,8 @@ fun OnfApp(
     onImportModel: () -> Unit,
     onImportKnowledge: () -> Unit,
     onExport: (String) -> Unit,
+    onOpenFoundryCompanion: () -> Unit,
+    onRequestFoundrySdk: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -194,6 +196,10 @@ fun OnfApp(
             onDismiss = { showSystem = false },
             onImportModel = onImportModel,
             onImportKnowledge = onImportKnowledge,
+            onSelectModel = viewModel::selectModel,
+            onRemoveModel = viewModel::removeModel,
+            onOpenFoundryCompanion = onOpenFoundryCompanion,
+            onRequestFoundrySdk = onRequestFoundrySdk,
         )
     }
 }

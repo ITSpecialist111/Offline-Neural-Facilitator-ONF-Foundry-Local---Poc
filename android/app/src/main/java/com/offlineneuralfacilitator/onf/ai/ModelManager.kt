@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-internal data class ModelDescriptor(
+data class ModelDescriptor(
     val name: String,
     val path: String,
     val sizeBytes: Long,
@@ -16,9 +16,11 @@ internal data class ModelDescriptor(
 
 internal class ModelManager(
     private val context: Context,
+    preferencesName: String = PREFERENCES,
+    modelDirectory: File = File(context.filesDir, "models"),
 ) {
-    private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-    private val modelDirectory = File(context.filesDir, "models").apply(File::mkdirs)
+    private val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+    private val modelDirectory = modelDirectory.apply(File::mkdirs)
 
     fun selected(): ModelDescriptor? {
         val path = preferences.getString(KEY_PATH, null) ?: return null
@@ -28,6 +30,28 @@ internal class ModelManager(
             path = file.absolutePath,
             sizeBytes = file.length(),
         )
+    }
+
+    fun available(): List<ModelDescriptor> {
+        val selected = selected()
+        return modelDirectory.listFiles { file ->
+            file.isFile && file.extension.equals("litertlm", ignoreCase = true)
+        }.orEmpty()
+            .map { file ->
+                ModelDescriptor(
+                    name = if (file.absolutePath == selected?.path) {
+                        selected.name
+                    } else {
+                        friendlyName(file.name)
+                    },
+                    path = file.absolutePath,
+                    sizeBytes = file.length(),
+                )
+            }
+            .sortedWith(
+                compareByDescending<ModelDescriptor> { it.path == selected?.path }
+                    .thenBy { it.name.lowercase() },
+            )
     }
 
     suspend fun import(
@@ -88,17 +112,24 @@ internal class ModelManager(
     }
 
     fun select(descriptor: ModelDescriptor) {
-        val previous = selected()?.path
+        require(File(descriptor.path).isFile) { "The selected model is no longer available." }
         preferences.edit()
             .putString(KEY_PATH, descriptor.path)
             .putString(KEY_NAME, descriptor.name)
             .apply()
-        if (previous != null && previous != descriptor.path) File(previous).delete()
     }
 
     fun discard(descriptor: ModelDescriptor) {
         if (selected()?.path != descriptor.path) File(descriptor.path).delete()
     }
+
+    fun remove(descriptor: ModelDescriptor): Boolean {
+        if (selected()?.path == descriptor.path) return false
+        return File(descriptor.path).delete()
+    }
+
+    private fun friendlyName(filename: String): String = filename
+        .replace(Regex("-\\d{13}(?=\\.litertlm$)", RegexOption.IGNORE_CASE), "")
 
     companion object {
         private const val PREFERENCES = "onf_models"

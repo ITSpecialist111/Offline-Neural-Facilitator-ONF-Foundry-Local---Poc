@@ -117,7 +117,7 @@ class LiteRtGemmaEngine(
             candidate.initialize()
             candidate to backend.name
         } catch (error: Throwable) {
-            candidate.close()
+            runCatching(candidate::close)
             throw error
         }
     }

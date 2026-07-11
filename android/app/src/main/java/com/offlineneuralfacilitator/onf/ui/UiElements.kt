@@ -192,9 +192,9 @@ internal fun formatElapsed(seconds: Long): String = "%02d:%02d".format(seconds /
 internal fun formatClock(epochMs: Long): String = CLOCK_FORMAT.format(Instant.ofEpochMilli(epochMs))
 
 internal fun compactBytes(bytes: Long): String = when {
-    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824f)
-    bytes >= 1_048_576L -> "%.1f MB".format(bytes / 1_048_576f)
-    bytes >= 1_024L -> "%.1f KB".format(bytes / 1_024f)
+    bytes >= 1_073_741_824L -> "%.2f GiB".format(bytes / 1_073_741_824f)
+    bytes >= 1_048_576L -> "%.1f MiB".format(bytes / 1_048_576f)
+    bytes >= 1_024L -> "%.1f KiB".format(bytes / 1_024f)
     else -> "$bytes B"
 }
 

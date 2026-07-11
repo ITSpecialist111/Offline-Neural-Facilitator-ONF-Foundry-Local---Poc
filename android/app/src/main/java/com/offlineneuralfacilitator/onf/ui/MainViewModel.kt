@@ -8,7 +8,10 @@ import com.offlineneuralfacilitator.onf.OnfApplication
 import com.offlineneuralfacilitator.onf.ai.EnginePhase
 import com.offlineneuralfacilitator.onf.ai.FoundryCompanionDetector
 import com.offlineneuralfacilitator.onf.ai.FoundryCompanionStatus
+import com.offlineneuralfacilitator.onf.ai.GalleryDetector
+import com.offlineneuralfacilitator.onf.ai.GalleryStatus
 import com.offlineneuralfacilitator.onf.ai.LlmStatus
+import com.offlineneuralfacilitator.onf.ai.ModelDescriptor
 import com.offlineneuralfacilitator.onf.audio.AudioCaptureController
 import com.offlineneuralfacilitator.onf.audio.EncryptedAudioSpool
 import com.offlineneuralfacilitator.onf.audio.RecordingState
@@ -35,6 +38,9 @@ data class MainUiState(
     val knowledgeCount: Int = 0,
     val modelImportProgress: Float? = null,
     val foundryCompanion: FoundryCompanionStatus = FoundryCompanionStatus(),
+    val gallery: GalleryStatus = GalleryStatus(),
+    val deviceModels: List<ModelDescriptor> = emptyList(),
+    val selectedModelPath: String? = null,
 )
 
 data class ExportPayload(
@@ -50,6 +56,9 @@ private data class EphemeralUiState(
     val knowledgeCount: Int = 0,
     val modelImportProgress: Float? = null,
     val foundryCompanion: FoundryCompanionStatus = FoundryCompanionStatus(),
+    val gallery: GalleryStatus = GalleryStatus(),
+    val deviceModels: List<ModelDescriptor> = emptyList(),
+    val selectedModelPath: String? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -73,6 +82,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             knowledgeCount = local.knowledgeCount,
             modelImportProgress = local.modelImportProgress,
             foundryCompanion = local.foundryCompanion,
+            gallery = local.gallery,
+            deviceModels = local.deviceModels,
+            selectedModelPath = local.selectedModelPath,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -80,12 +92,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             runCatching {
                 facilitator.initialize()
+                val selectedModel = container.modelManager.selected()
                 ephemeral.value = ephemeral.value.copy(
                     initialized = true,
                     knowledgeCount = facilitator.knowledgeCount(),
                     foundryCompanion = FoundryCompanionDetector.inspect(getApplication()),
+                    gallery = GalleryDetector.inspect(getApplication()),
+                    deviceModels = container.modelManager.available(),
+                    selectedModelPath = selectedModel?.path,
                 )
-                container.modelManager.selected()?.let { descriptor ->
+                selectedModel?.let { descriptor ->
                     loadModel(descriptor.path, descriptor.name)
                 }
             }.onFailure { error ->
@@ -143,6 +159,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importModel(uri: Uri) = launchTask("Importing Gemma model") {
+        val previous = container.modelManager.selected()
         ephemeral.value = ephemeral.value.copy(modelImportProgress = 0f)
         val descriptor = container.modelManager.import(uri) { progress ->
             ephemeral.value = ephemeral.value.copy(modelImportProgress = progress)
@@ -150,12 +167,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             loadModel(descriptor.path, descriptor.name)
             container.modelManager.select(descriptor)
+            refreshModels()
         } catch (error: Throwable) {
             container.modelManager.discard(descriptor)
+            refreshModels()
+            restoreModel(previous)
             throw error
         }
         ephemeral.value = ephemeral.value.copy(modelImportProgress = null)
         postNotice("${descriptor.name} is ready for private reasoning")
+    }
+
+    fun selectModel(path: String) = launchTask("Switching private model") {
+        val previous = container.modelManager.selected()
+        val descriptor = container.modelManager.available().firstOrNull { it.path == path }
+            ?: error("The selected model is no longer available.")
+        if (descriptor.path == ephemeral.value.selectedModelPath && container.llm.status.value.phase == EnginePhase.READY) {
+            postNotice("${descriptor.name} is already active")
+            return@launchTask
+        }
+        try {
+            loadModel(descriptor.path, descriptor.name)
+            container.modelManager.select(descriptor)
+            refreshModels()
+            postNotice("Switched to ${descriptor.name}")
+        } catch (error: Throwable) {
+            restoreModel(previous)
+            throw error
+        }
+    }
+
+    fun removeModel(path: String) = launchTask("Removing private model") {
+        val descriptor = container.modelManager.available().firstOrNull { it.path == path }
+            ?: error("The selected model is no longer available.")
+        check(descriptor.path != ephemeral.value.selectedModelPath) { "Switch models before removing the active model." }
+        check(container.modelManager.remove(descriptor)) { "The model could not be removed." }
+        refreshModels()
+        postNotice("Removed ${descriptor.name}")
     }
 
     fun importKnowledge(uri: Uri) = launchTask("Indexing local knowledge") {
@@ -197,6 +245,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ephemeral.value = ephemeral.value.copy(busyLabel = "Loading Gemma into device memory")
         container.llm.load(path, name)
         ephemeral.value = ephemeral.value.copy(busyLabel = null, modelImportProgress = null)
+    }
+
+    private fun refreshModels() {
+        val selected = container.modelManager.selected()
+        ephemeral.value = ephemeral.value.copy(
+            deviceModels = container.modelManager.available(),
+            selectedModelPath = selected?.path,
+        )
+    }
+
+    private suspend fun restoreModel(previous: ModelDescriptor?) {
+        previous ?: return
+        runCatching { loadModel(previous.path, previous.name) }
+        refreshModels()
     }
 
     private fun launchTask(label: String, block: suspend () -> Unit) {

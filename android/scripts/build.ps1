@@ -35,8 +35,12 @@ try {
 $source = Join-Path $androidRoot "app\build\outputs\apk\debug\app-debug.apk"
 $artifactDirectory = Join-Path $androidRoot "artifacts"
 $artifact = Join-Path $artifactDirectory "ONF-Android-v0.1.0-alpha01-debug.apk"
+$checksumArtifact = [System.IO.Path]::ChangeExtension($artifact, ".sha256.txt")
 New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
 Copy-Item $source $artifact -Force
+$checksum = (Get-FileHash $artifact -Algorithm SHA256).Hash
+Set-Content -Path $checksumArtifact -Value "$checksum  $(Split-Path -Leaf $artifact)" -Encoding ascii
 
 Write-Host ""
 Write-Host "Sideload APK: $artifact" -ForegroundColor Green
+Write-Host "SHA-256:     $checksum" -ForegroundColor Green

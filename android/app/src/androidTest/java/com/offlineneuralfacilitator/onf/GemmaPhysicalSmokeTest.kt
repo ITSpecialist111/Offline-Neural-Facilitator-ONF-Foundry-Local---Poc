@@ -1,6 +1,7 @@
 package com.offlineneuralfacilitator.onf
 
 import android.os.SystemClock
+import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.offlineneuralfacilitator.onf.ai.EnginePhase
@@ -19,6 +20,7 @@ class GemmaPhysicalSmokeTest {
     @Test
     fun loadsPrivateGemmaAndGeneratesLocally() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        assumeTrue("This multi-gigabyte readiness probe is restricted to the Fold7.", Build.DEVICE == "q7q")
         val model = File(context.filesDir, "models/gemma-4-E2B-it.litertlm")
         assumeTrue("Provision the physical Gemma model before this test.", model.isFile)
 

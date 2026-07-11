@@ -12,6 +12,7 @@
 
     <queries>
         <package android:name="com.microsoft.foundrylocal.app" />
+        <package android:name="com.google.ai.edge.gallery" />
     </queries>
 
     <application

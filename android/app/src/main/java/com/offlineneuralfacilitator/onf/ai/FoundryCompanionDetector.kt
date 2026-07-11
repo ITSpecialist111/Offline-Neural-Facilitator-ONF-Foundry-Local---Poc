@@ -17,6 +17,18 @@ data class FoundryCompanionStatus(
         }
 }
 
+data class GalleryStatus(
+    val installed: Boolean = false,
+    val versionName: String? = null,
+) {
+    val summary: String
+        get() = if (installed) {
+            "Google AI Edge Gallery ${versionName ?: "installed"} detected"
+        } else {
+            "Google AI Edge Gallery not installed"
+        }
+}
+
 internal object FoundryCompanionDetector {
     const val PACKAGE_NAME = "com.microsoft.foundrylocal.app"
 
@@ -38,4 +50,18 @@ internal object FoundryCompanionDetector {
             },
         )
     }.getOrDefault(FoundryCompanionStatus())
+}
+
+internal object GalleryDetector {
+    private const val PACKAGE_NAME = "com.google.ai.edge.gallery"
+
+    fun inspect(context: Context): GalleryStatus = runCatching {
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(PACKAGE_NAME, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(PACKAGE_NAME, 0)
+        }
+        GalleryStatus(installed = true, versionName = info.versionName)
+    }.getOrDefault(GalleryStatus())
 }

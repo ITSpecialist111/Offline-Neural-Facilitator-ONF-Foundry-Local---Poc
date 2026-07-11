@@ -265,13 +265,15 @@ flowchart LR
 - real foreground microphone capture in five-second PCM/WAV segments;
 - atomic AES-256-GCM recording envelopes with independent Keystore-generated IVs;
 - detection and status reporting for the official Foundry Local Android companion;
-- imported `.litertlm` Gemma 4 models through LiteRT-LM 0.14.0;
+- a retained private `.litertlm` model library with explicit E2B/E4B selection and removal;
+- Google AI Edge Gallery detection with an honest scoped-storage boundary;
+- imported Gemma 4 inference through LiteRT-LM 0.14.0;
 - bounded GPU-first inference with CPU fallback;
 - optional Gemma multimodal transcription of encrypted audio segments;
 - local JSON and Markdown export;
 - no `INTERNET` permission, telemetry, cloud backup, or device-transfer backup.
 
-The Android model is deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; either can be imported through the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format. Once the gated Foundry Android SDK is available, the intended runtime order is Foundry Local first, LiteRT-LM second, and deterministic ONF operation without a model third.
+Android models are deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; both can now be retained and switched from the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format. Android scoped storage prevents ONF from silently reusing a model downloaded into Google AI Edge Gallery's private app tree, so production reuse requires an explicit import. Once the gated Foundry Android SDK is available, the chooser can add Foundry catalog aliases beside the current LiteRT library; deterministic ONF operation remains available without either generative runtime.
 
 ### Validation status
 
@@ -279,7 +281,7 @@ The native alpha has been built and exercised on an Android 16/API 36 Fold-class
 
 The sideload APK has also passed signature verification, Android lint, 16 KB ZIP alignment, and 16 KB ELF alignment for every arm64 native library. Its manifest contains microphone and foreground-service permissions but no internet permission.
 
-The physical Fold7 passed local Android Keystore and skill tests plus repeated real Gemma 4 E2B load/generation probes. With CPU/XNNPACK fallback, cached load took 509–763 ms and the deterministic readiness response took 1,629–1,841 ms. This is a functional smoke result, not a sustained throughput, battery, or thermal claim. Build, model-import, Foundry preview, and sideload details are in [android/README.md](android/README.md).
+The physical Fold7 passed local Android Keystore and skill tests plus real E2B → E4B → E2B switching without an app restart. CPU/XNNPACK was selected throughout. In the final one-shot sequence, load/generation took 523/2,755 ms for E2B, 13,581/6,391 ms for E4B, and 1,502/2,609 ms after returning to E2B; every probe returned its exact readiness token. These are functional smoke results, not sustained throughput, quality, battery, or thermal claims. Build, model-import, Foundry preview, and sideload details are in [android/README.md](android/README.md).
 
 ## Quick start
 
@@ -415,8 +417,9 @@ Large models, audio checkpoints, local knowledge, generated speech, ChromaDB dat
 ## Current limitations
 
 - The desktop reference launcher targets Windows; Android is a separate native alpha.
-- The Fold7 has passed initial Gemma inference; sustained throughput, battery, thermals, and long-session microphone behavior still require benchmarking.
+- The Fold7 has passed E2B/E4B switching and initial inference; sustained throughput, quality, battery, thermals, and long-session microphone behavior still require benchmarking.
 - Foundry Local Android is a preview companion architecture; ONF cannot link it until Microsoft grants the gated Kotlin client SDK.
+- Android sandboxing prevents direct production reuse of Gallery-owned model files; users must import a shared/original pack into ONF.
 - The Android APK imports compatible `.litertlm` models but intentionally does not bundle multi-gigabyte Gemma weights.
 - Native iOS packaging is not a current deliverable.
 - Speaker identity/diarization is not currently claimed or included.

@@ -47,6 +47,25 @@ ONF already defines a pluggable `LocalLlmEngine`. The runtime order is:
 
 The application detects the official companion package and reports its version in the Private System sheet. Detection grants no access to companion data and adds no network permission.
 
+## Implemented runtime chooser
+
+The Private System sheet now makes the boundary visible instead of hiding it behind automatic fallback:
+
+- ONF retains every successfully imported `.litertlm` pack in its own private model library;
+- users can switch between E2B, E4B, and future compatible LiteRT-LM packs without deleting the previous model;
+- deletion is explicit and the active model cannot be removed accidentally;
+- a failed model load attempts to restore the prior engine;
+- the official Foundry companion version is shown separately with **Open companion** and **Request SDK access** actions;
+- Foundry catalog selection remains unavailable until the documented Kotlin client package is linked.
+
+The current runtime is LiteRT-LM or deterministic ONF. Companion detection alone is not represented as an active Foundry runtime.
+
+## Cross-app Gemma boundary
+
+Google AI Edge Gallery is also installed on the Fold7 and holds `gemma-4-E4B-it.litertlm` (3,659,530,240 bytes) in its app-specific external-storage tree. Research of the Gallery implementation and installed package found no supported exported model-serving API. Android scoped storage also prevents ONF or the document picker from silently browsing another application's `Android/data` directory.
+
+ONF therefore detects Gallery only to explain the available choices. Production users must import an original/shared model with the system picker. The verified E4B benchmark used a development-only ADB copy into ONF's sandbox, with source and destination SHA-256 both equal to `0B2A8980CE155FD97673D8E820B4D29D9C7D99B8FA6806F425D969B145BD52E0`.
+
 ## Planned official SDK adapter
 
 When the gated artifact and documentation are available, add `FoundryLocalEngine : LocalLlmEngine` with these responsibilities:
@@ -86,3 +105,5 @@ The Apache-2.0 generic Gemma 4 E2B LiteRT-LM model is provisioned privately in O
 - output: `ONF-FOLD7-READY.`
 
 This keeps development unblocked while preserving a clean migration path to the official Foundry Android SDK.
+
+The final two-model switch sequence also passed on the same Fold7: E2B loaded/generated in 523/2,755 ms, E4B in 13,581/6,391 ms, and returning to E2B in 1,502/2,609 ms. All three probes selected CPU/XNNPACK and returned their exact readiness tokens. A separate final E2B probe loaded/generated in 790/1,838 ms and returned `ONF-FOLD7-READY.` These are functional one-shot results, not sustained latency, quality, battery, or thermal claims.

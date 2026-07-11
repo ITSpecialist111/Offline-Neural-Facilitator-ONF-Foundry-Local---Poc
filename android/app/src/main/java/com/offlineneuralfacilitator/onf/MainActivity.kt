@@ -1,7 +1,9 @@
 package com.offlineneuralfacilitator.onf
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -89,6 +91,13 @@ class MainActivity : ComponentActivity() {
                     },
                     onImportModel = { modelPicker.launch(arrayOf("application/octet-stream", "*/*")) },
                     onImportKnowledge = { knowledgePicker.launch(arrayOf("text/markdown", "text/plain")) },
+                    onOpenFoundryCompanion = {
+                        packageManager.getLaunchIntentForPackage("com.microsoft.foundrylocal.app")?.let(::startActivity)
+                            ?: viewModel.reportNotice("Microsoft Foundry Local companion is not installed.")
+                    },
+                    onRequestFoundrySdk = {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aka.ms/foundrylocal-androidprp")))
+                    },
                     onExport = { kind ->
                         val payload = viewModel.export(kind)
                         if (kind == "json") {
