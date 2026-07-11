@@ -1,0 +1,20 @@
+# Runtime bundled into the portable Windows distribution.
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+python-multipart>=0.0.9
+pydantic>=2.8,<3.0
+openai>=1.50,<3.0
+requests>=2.32,<3.0
+chromadb>=1.0,<2.0
+pypdf>=5.0,<7.0
+PyYAML>=6.0,<7.0
+reportlab>=4.2,<5.0
+
+# Local speech-to-text runtime. Model weights remain external/user-cached.
+faster-whisper>=1.0,<2.0
+soundfile>=0.12,<1.0
+
+# Native Windows notification-area lifecycle and packaging.
+pystray>=0.19,<1.0
+Pillow>=10.0,<13.0
+pyinstaller>=6.10,<7.0

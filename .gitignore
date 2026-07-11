@@ -37,6 +37,10 @@ android/*.keystore
 android/app/release/
 *.litertlm
 
+# Windows portable release artifacts
+windows/artifacts/
+windows/onf.ico
+
 # Model weights and caches
 models/
 .olive-cache/

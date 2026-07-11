@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -16,8 +17,8 @@ from pathlib import Path
 import requests
 import websockets
 
-BASE_URL = "http://127.0.0.1:8000"
-WS_URL = "ws://127.0.0.1:8000/ws/stream"
+BASE_URL = os.getenv("ONF_TEST_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+WS_URL = BASE_URL.replace("http://", "ws://", 1).replace("https://", "wss://", 1) + "/ws/stream"
 
 
 def request(method: str, path: str, **kwargs) -> dict:
@@ -29,7 +30,7 @@ def request(method: str, path: str, **kwargs) -> dict:
 def wait_for_backend() -> None:
     for _ in range(40):
         try:
-            if request("GET", "/").get("status") == "ready":
+            if request("GET", "/api/status").get("status") == "ready":
                 return
         except Exception:
             time.sleep(0.25)

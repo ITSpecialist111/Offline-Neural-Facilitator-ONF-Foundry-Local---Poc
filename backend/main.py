@@ -12,14 +12,19 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from backend.runtime_paths import data_path, is_frozen, resource_path
 from backend.services.voice_service import VoiceService
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = ROOT_DIR / "outputs_v2"
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR = data_path("outputs_v2")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+FRONTEND_DIR = resource_path("frontend_dist")
+if not FRONTEND_DIR.is_dir() and not is_frozen():
+    FRONTEND_DIR = resource_path("frontend", "dist")
+SERVE_FRONTEND = os.getenv("ONF_SERVE_FRONTEND", "0") == "1" and (FRONTEND_DIR / "index.html").is_file()
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("ONF_ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")
@@ -58,6 +63,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.mount("/audio", StaticFiles(directory=str(OUTPUT_DIR)), name="audio")
+if SERVE_FRONTEND and (FRONTEND_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="frontend-assets")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -99,14 +106,25 @@ class SessionCreate(BaseModel):
     topic: str = Field(default="Untitled session", max_length=120)
 
 
-@app.get("/")
-async def root() -> dict:
+def status_payload() -> dict:
     return {
         "status": "ready" if voice_service else "starting",
         "service": "Offline Neural Facilitator",
         "version": app.version,
         "privacy": "local-first",
     }
+
+
+@app.get("/", response_model=None)
+async def root():
+    if SERVE_FRONTEND:
+        return FileResponse(FRONTEND_DIR / "index.html")
+    return status_payload()
+
+
+@app.get("/api/status")
+async def api_status() -> dict:
+    return status_payload()
 
 
 @app.get("/health")
@@ -330,6 +348,16 @@ async def websocket_stream(websocket: WebSocket) -> None:
         pass
     finally:
         active_websockets.discard(websocket)
+
+
+@app.get("/{full_path:path}", include_in_schema=False, response_model=None)
+async def frontend_fallback(full_path: str):
+    if not SERVE_FRONTEND:
+        raise HTTPException(status_code=404, detail="Not found")
+    candidate = (FRONTEND_DIR / full_path).resolve()
+    if candidate.is_file() and FRONTEND_DIR.resolve() in candidate.parents:
+        return FileResponse(candidate)
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 if __name__ == "__main__":

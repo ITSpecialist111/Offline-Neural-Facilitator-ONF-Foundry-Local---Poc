@@ -13,6 +13,19 @@
 
 ![Offline Neural Facilitator live workspace](screenshots/onf-live-workspace.png)
 
+## Windows portable application
+
+The desktop edition is available as a **one-folder Windows portable application**. Extract the ZIP and double-click `ONF.exe`; Python, Node.js, npm, VS Code, Vite, and manual service commands are not required. ONF serves its compiled React interface from its own loopback backend, opens the default browser for reliable microphone permissions, and remains available from a Windows notification-area icon for reopen, data-folder, log, and clean-exit actions.
+
+[**Download ONF Windows Portable v2.0.0-alpha01**](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/windows-v2.0.0-alpha01/ONF-Windows-Portable-v2.0.0-alpha01.zip) · [SHA-256 checksum](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/windows-v2.0.0-alpha01/ONF-Windows-Portable-v2.0.0-alpha01.sha256.txt) · [Release notes](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/tag/windows-v2.0.0-alpha01)
+
+1. Extract the complete ZIP to a writable folder; do not run it inside the ZIP or move `ONF.exe` away from `_internal`.
+2. Double-click `ONF.exe` or `Start ONF.cmd`.
+3. Right-click the ONF tray icon to reopen the workspace, inspect portable data/logs, or exit.
+4. Install [Microsoft Foundry Local](https://learn.microsoft.com/azure/foundry-local/get-started) separately for live Qwen/DeepSeek inference. If its CLI is available, the portable host starts the service and requests the configured models automatically. The deterministic showcase, RAG, skills, decisions, actions, and exports remain available without Foundry.
+
+The package stores mutable state under its adjacent `data` directory and falls back to `%LOCALAPPDATA%\OfflineNeuralFacilitator` if the extracted folder is not writable. It includes the faster-whisper runtime but not multi-gigabyte Whisper weights; it uses an already cached compatible model with runtime downloads disabled. The compact alpha runs packaged transcription on CPU and does not bundle MeloTTS/PyTorch speech output. This build is unsigned, so Windows SmartScreen may identify an unknown publisher.
+
 ## Why ONF?
 
 Most meeting assistants send audio and transcripts to a cloud service. That is not acceptable for every board meeting, incident response, legal review, healthcare discussion, field operation, or disconnected environment.
@@ -352,6 +365,8 @@ If models are already cached:
 ```
 
 Open **http://127.0.0.1:5173** if the browser does not open automatically.
+
+These source-development commands remain useful for contributors. End users can instead use the [Windows portable application](#windows-portable-application).
 
 Useful launch modes:
 

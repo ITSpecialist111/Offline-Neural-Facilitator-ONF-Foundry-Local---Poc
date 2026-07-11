@@ -15,6 +15,7 @@ from typing import Awaitable, Callable
 from pypdf import PdfReader
 
 from backend.llm.foundry_manager import FoundryEngine
+from backend.runtime_paths import data_path, resource_path
 from backend.services.rag_service import RagService
 from backend.services.report_service import ReportService
 from backend.services.skill_service import SkillService
@@ -30,16 +31,20 @@ class VoiceService:
     def __init__(self) -> None:
         self.foundry = FoundryEngine()
         self.transcription_service = TranscriptionService()
-        self.tts_service = TtsService()
-        self.rag_service = RagService()
-        self.skill_service = SkillService()
-        self.report_service = ReportService()
+        self.tts_service = TtsService(output_dir=str(data_path("outputs_v2")))
+        self.rag_service = RagService(persist_directory=str(data_path("chroma_db")))
+        self.skill_service = SkillService(
+            skills_dir=str(data_path("skills")),
+            builtin_skills_dir=str(resource_path("skills")),
+        )
+        self.report_service = ReportService(export_dir=str(data_path("reports")))
 
         self.system_message = (
             "You are ONF, a concise and neutral meeting facilitator. Help a group clarify evidence, "
             "surface trade-offs, record decisions, and leave every next step with an owner."
         )
-        self.sessions_dir = "sessions"
+        self.sessions_dir = str(data_path("sessions"))
+        self.vault_path = data_path("vault.txt", create_parent=True)
         os.makedirs(self.sessions_dir, exist_ok=True)
         self.broadcast_callback: BroadcastCallback | None = None
         self._state_lock = threading.RLock()
@@ -48,8 +53,8 @@ class VoiceService:
         self._last_dynamics_signature = ""
         self.rag_cooldown_seconds = float(os.getenv("ONF_RAG_COOLDOWN_SECONDS", "15"))
         self._reset_state()
-        self.rag_service.migrate_from_file("vault.txt")
-        self.rag_service.seed_directory("knowledge")
+        self.rag_service.migrate_from_file(str(self.vault_path))
+        self.rag_service.seed_directory(str(resource_path("knowledge")))
 
     def _reset_state(self) -> None:
         now = dt.datetime.now(dt.timezone.utc)
@@ -515,7 +520,7 @@ class VoiceService:
         clean = new_text.strip()
         if not clean:
             return 0
-        with open("vault.txt", "a", encoding="utf-8") as backup:
+        with self.vault_path.open("a", encoding="utf-8") as backup:
             backup.write(f"\n\n{clean}")
         return self.rag_service.add_document(clean, source=source)
 

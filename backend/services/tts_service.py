@@ -9,10 +9,12 @@ import time
 import types
 from pathlib import Path
 
+from backend.runtime_paths import data_path, resource_path
+
 
 class TtsService:
-    def __init__(self, output_dir: str = "outputs_v2") -> None:
-        self.output_dir = output_dir
+    def __init__(self, output_dir: str | None = None) -> None:
+        self.output_dir = str(output_dir or data_path("outputs_v2"))
         os.makedirs(self.output_dir, exist_ok=True)
         self._model = None
         self._speaker_ids: dict = {}
@@ -128,9 +130,8 @@ class TtsService:
 
     @staticmethod
     def _model_dir() -> Path:
-        project_root = Path(__file__).resolve().parents[2]
         configured = os.getenv("ONF_MELO_MODEL_DIR")
-        return Path(configured) if configured else project_root / "audio_models" / "MeloTTS-English"
+        return Path(configured) if configured else resource_path("audio_models", "MeloTTS-English")
 
     def generate_speech(self, text: str, voice_id: str = "EN-BR") -> str | None:
         if not text or not text.strip():

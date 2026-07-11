@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import chromadb
+from chromadb.config import Settings
 
 
 class LocalHashEmbedding:
@@ -58,7 +59,10 @@ class RagService:
 
     def __init__(self, persist_directory: str = "./chroma_db") -> None:
         self.seeded_chunks = 0
-        self.client = chromadb.PersistentClient(path=persist_directory)
+        self.client = chromadb.PersistentClient(
+            path=persist_directory,
+            settings=Settings(anonymized_telemetry=False),
+        )
         self.embedding_function = LocalHashEmbedding()
         self.collection = self.client.get_or_create_collection(
             name="knowledge_vault_local_v2",

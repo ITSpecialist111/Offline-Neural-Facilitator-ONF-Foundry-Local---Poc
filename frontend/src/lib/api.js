@@ -1,7 +1,9 @@
 const configuredBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
 const fallbackHost = typeof window === 'undefined' ? '127.0.0.1' : window.location.hostname
+const isViteDevelopment = typeof window !== 'undefined' && window.location.port === '5173'
+const packagedBase = typeof window === 'undefined' ? 'http://127.0.0.1:8000' : window.location.origin
 
-export const API_BASE = configuredBase || `http://${fallbackHost}:8000`
+export const API_BASE = configuredBase || (isViteDevelopment ? `http://${fallbackHost}:8000` : packagedBase)
 export const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws/stream'
 
 export async function api(path, options = {}) {
