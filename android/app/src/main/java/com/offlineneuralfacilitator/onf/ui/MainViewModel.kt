@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.offlineneuralfacilitator.onf.OnfApplication
 import com.offlineneuralfacilitator.onf.ai.EnginePhase
+import com.offlineneuralfacilitator.onf.ai.FoundryCompanionDetector
+import com.offlineneuralfacilitator.onf.ai.FoundryCompanionStatus
 import com.offlineneuralfacilitator.onf.ai.LlmStatus
 import com.offlineneuralfacilitator.onf.audio.AudioCaptureController
 import com.offlineneuralfacilitator.onf.audio.EncryptedAudioSpool
@@ -32,6 +34,7 @@ data class MainUiState(
     val notice: String? = null,
     val knowledgeCount: Int = 0,
     val modelImportProgress: Float? = null,
+    val foundryCompanion: FoundryCompanionStatus = FoundryCompanionStatus(),
 )
 
 data class ExportPayload(
@@ -46,6 +49,7 @@ private data class EphemeralUiState(
     val notice: String? = null,
     val knowledgeCount: Int = 0,
     val modelImportProgress: Float? = null,
+    val foundryCompanion: FoundryCompanionStatus = FoundryCompanionStatus(),
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -68,6 +72,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             notice = local.notice,
             knowledgeCount = local.knowledgeCount,
             modelImportProgress = local.modelImportProgress,
+            foundryCompanion = local.foundryCompanion,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -78,6 +83,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ephemeral.value = ephemeral.value.copy(
                     initialized = true,
                     knowledgeCount = facilitator.knowledgeCount(),
+                    foundryCompanion = FoundryCompanionDetector.inspect(getApplication()),
                 )
                 container.modelManager.selected()?.let { descriptor ->
                     loadModel(descriptor.path, descriptor.name)

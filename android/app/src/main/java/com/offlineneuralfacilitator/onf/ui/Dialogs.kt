@@ -94,6 +94,44 @@ internal fun SystemSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
+                            Text("Microsoft Foundry Local", fontWeight = FontWeight.Bold)
+                            Text(
+                                uiState.foundryCompanion.summary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        StatusPill(
+                            if (uiState.foundryCompanion.installed) "Preview found" else "Optional",
+                            color = if (uiState.foundryCompanion.installed) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        if (uiState.foundryCompanion.installed) {
+                            "The official companion service is available but not connected. ONF retains LiteRT-LM until the gated Android SDK is linked; undocumented IPC is not used. The preview companion has separate network and data terms."
+                        } else {
+                            "Install the official preview companion and obtain the gated Android SDK to enable a future Foundry-backed engine."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            OnfCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
                             Text("Gemma 4 · LiteRT-LM", fontWeight = FontWeight.Bold)
                             Text(
                                 uiState.llm.modelName ?: "No model imported",

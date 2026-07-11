@@ -5,7 +5,7 @@
 ### Private meeting intelligence that listens, reasons, facilitates, and records outcomes on your device
 
 **Windows:** React · FastAPI · Foundry Local · Qwen · DeepSeek · Whisper<br>
-**Android:** Kotlin · Jetpack Compose · LiteRT-LM · Gemma 4 · Android Keystore
+**Android:** Kotlin · Jetpack Compose · Foundry Local preview-ready · LiteRT-LM · Gemma 4 · Android Keystore
 
 [Why ONF?](#why-onf) · [Architecture](#how-it-is-put-together) · [Dragon comparison](#dragon-copilot-and-onf-different-offline-boundaries) · [Android](#android-flagship-edition) · [Quick start](#quick-start) · [Demo](#showcase-mode)
 
@@ -51,7 +51,7 @@ The governing product principles are documented in [COMMANDERS_INTENT.md](COMMAN
 | Speech output | English MeloTTS | Optional, lazy-loaded, and generated locally |
 | Session records | JSON + ReportLab + Markdown/CSV writers | Local session snapshots and portable reports |
 | Presenter mode | Deterministic backend scenario | Demonstrates the complete product loop even while models are warming |
-| Android flagship alpha | Native Kotlin + Compose + LiteRT-LM | Fold-aware workspace, encrypted foreground capture, local SQLite/RAG/skills, imported Gemma 4, and no internet permission |
+| Android flagship alpha | Native Kotlin + Compose + Foundry companion detection + LiteRT-LM fallback | Fold-aware workspace, encrypted foreground capture, local SQLite/RAG/skills, verified Gemma 4, and no internet permission |
 
 ## How it is put together
 
@@ -231,7 +231,11 @@ The strategic distinction is concise:
 
 ## Android flagship edition
 
-The repository now includes a standalone native Android alpha under [android](android). It is not a remote control for the desktop service and does not embed Python, FastAPI, Foundry Local, or a WebView.
+The repository now includes a standalone native Android alpha under [android](android). It is not a remote control for the desktop service and does not embed Python, FastAPI, or a WebView.
+
+Microsoft announced **Foundry Local for Android** as a gated preview in November 2025. The Play Store app is a companion service for client applications using Microsoft's separate Android SDK; version 0.1.5 advertises idiomatic Kotlin APIs and audio transcription. ONF detects that official companion but does not use undocumented Binder calls. The gated SDK is not currently published to Maven Central or Google Maven, so ONF retains its proven LiteRT-LM engine until Microsoft grants the client package.
+
+The companion has independent network and preview data terms. ONF's current no-network/no-telemetry claim applies to the LiteRT-backed ONF APK, not automatically to a future Foundry companion integration; that path requires an explicit privacy review and visible runtime disclosure.
 
 The Android trust boundary is the phone itself:
 
@@ -240,8 +244,11 @@ flowchart LR
   MIC[Android microphone] --> CAPTURE[Foreground AudioRecord service]
   CAPTURE --> CRYPTO[AES-256-GCM segments\nAndroid Keystore]
   CRYPTO --> PRIVATE[App-private encrypted spool]
-  PRIVATE --> GEMMA[Gemma 4 audio/text\nLiteRT-LM]
-  GEMMA --> ORCH[Native facilitator\ndeterministic outcomes first]
+  PRIVATE --> RUNTIME{Official runtime available?}
+  RUNTIME -. gated SDK .-> FOUNDRY[Foundry Local Android\ncompanion service]
+  RUNTIME --> GEMMA[Gemma 4 audio/text\nLiteRT-LM fallback]
+  FOUNDRY --> ORCH[Native facilitator\ndeterministic outcomes first]
+  GEMMA --> ORCH
   KNOWLEDGE[SQLite knowledge vault\n384D local hashing] --> ORCH
   SKILLS[Markdown skills] --> ORCH
   ORCH --> UI[Adaptive Compose workspace]
@@ -257,21 +264,22 @@ flowchart LR
 - five local Markdown facilitator skills;
 - real foreground microphone capture in five-second PCM/WAV segments;
 - atomic AES-256-GCM recording envelopes with independent Keystore-generated IVs;
+- detection and status reporting for the official Foundry Local Android companion;
 - imported `.litertlm` Gemma 4 models through LiteRT-LM 0.14.0;
-- GPU-first inference with CPU fallback;
+- bounded GPU-first inference with CPU fallback;
 - optional Gemma multimodal transcription of encrypted audio segments;
 - local JSON and Markdown export;
 - no `INTERNET` permission, telemetry, cloud backup, or device-transfer backup.
 
-The Android model is deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; either can be imported through the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format.
+The Android model is deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; either can be imported through the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format. Once the gated Foundry Android SDK is available, the intended runtime order is Foundry Local first, LiteRT-LM second, and deterministic ONF operation without a model third.
 
 ### Validation status
 
-The native alpha has been built, installed, and exercised on an Android 16/API 36 Fold-class emulator in both open and closed states. Automated tests cover launch, the complete Code Blue workflow, deterministic outcome extraction, RAG, serialization, WAV generation, tamper detection, Android Keystore encryption/decryption, and a real foreground microphone segment.
+The native alpha has been built and exercised on an Android 16/API 36 Fold-class emulator in both open and closed states and installed on a Samsung Galaxy Z Fold7 (`SM-F966B`). Automated tests cover launch, the complete Code Blue workflow, deterministic outcome extraction, RAG, serialization, WAV generation, tamper detection, Android Keystore encryption/decryption, and a real foreground microphone segment.
 
 The sideload APK has also passed signature verification, Android lint, 16 KB ZIP alignment, and 16 KB ELF alignment for every arm64 native library. Its manifest contains microphone and foreground-service permissions but no internet permission.
 
-The emulator cannot establish Fold7-specific Gemma latency, sustained battery draw, thermal behavior, microphone quality, or Samsung lifecycle behavior. Those measurements begin when the physical Fold7 is connected and authorized over ADB. Build, model-import, and sideload instructions are in [android/README.md](android/README.md).
+The physical Fold7 passed local Android Keystore and skill tests plus repeated real Gemma 4 E2B load/generation probes. With CPU/XNNPACK fallback, cached load took 509–763 ms and the deterministic readiness response took 1,629–1,841 ms. This is a functional smoke result, not a sustained throughput, battery, or thermal claim. Build, model-import, Foundry preview, and sideload details are in [android/README.md](android/README.md).
 
 ## Quick start
 
@@ -387,6 +395,7 @@ android/
   app/src/androidTest/            Fold UI, Keystore and foreground-capture tests
   scripts/                        Build, emulator and physical-device sideload helpers
   README.md                       Android architecture, model import and Fold7 guide
+  FOUNDRY_LOCAL_ANDROID.md        Foundry companion evidence and official SDK migration plan
 
 scripts/
   setup.ps1                       Reproducible core/optional-audio setup
@@ -406,7 +415,8 @@ Large models, audio checkpoints, local knowledge, generated speech, ChromaDB dat
 ## Current limitations
 
 - The desktop reference launcher targets Windows; Android is a separate native alpha.
-- Physical Fold7 Gemma performance, battery, thermals, and long-session microphone behavior still require device benchmarking.
+- The Fold7 has passed initial Gemma inference; sustained throughput, battery, thermals, and long-session microphone behavior still require benchmarking.
+- Foundry Local Android is a preview companion architecture; ONF cannot link it until Microsoft grants the gated Kotlin client SDK.
 - The Android APK imports compatible `.litertlm` models but intentionally does not bundle multi-gigabyte Gemma weights.
 - Native iOS packaging is not a current deliverable.
 - Speaker identity/diarization is not currently claimed or included.
