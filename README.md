@@ -4,9 +4,10 @@
 
 ### Private meeting intelligence that listens, reasons, facilitates, and records outcomes on your device
 
-**React 19 · FastAPI · Microsoft Foundry Local · Qwen · DeepSeek · faster-whisper · ChromaDB · MeloTTS**
+**Windows:** React · FastAPI · Foundry Local · Qwen · DeepSeek · Whisper<br>
+**Android:** Kotlin · Jetpack Compose · Foundry Local preview-ready · LiteRT-LM · Gemma 4 · Android Keystore
 
-[Why ONF?](#why-onf) · [Architecture](#how-it-is-put-together) · [Dragon comparison](#dragon-copilot-and-onf-different-offline-boundaries) · [Quick start](#quick-start) · [Mobile and edge](#from-desktop-to-mobile-and-edge) · [Demo](#showcase-mode)
+[Why ONF?](#why-onf) · [Architecture](#how-it-is-put-together) · [Dragon comparison](#dragon-copilot-and-onf-different-offline-boundaries) · [Android](#android-flagship-edition) · [Quick start](#quick-start) · [Demo](#showcase-mode)
 
 </div>
 
@@ -50,6 +51,7 @@ The governing product principles are documented in [COMMANDERS_INTENT.md](COMMAN
 | Speech output | English MeloTTS | Optional, lazy-loaded, and generated locally |
 | Session records | JSON + ReportLab + Markdown/CSV writers | Local session snapshots and portable reports |
 | Presenter mode | Deterministic backend scenario | Demonstrates the complete product loop even while models are warming |
+| Android flagship alpha | Native Kotlin + Compose + Foundry companion detection + LiteRT-LM fallback | Fold-aware workspace, encrypted foreground capture, local SQLite/RAG/skills, verified Gemma 4, and no internet permission |
 
 ## How it is put together
 
@@ -185,7 +187,7 @@ ONF is designed around a visible local trust boundary:
 
 Initial setup can access the network to install packages, download models, and obtain hardware execution providers. Foundry Local may also refresh catalog metadata when online. Cached model inference itself is local.
 
-Application files are not encrypted by ONF. Use BitLocker or an equivalent encrypted storage policy for sensitive deployments. The current code/configuration audit is in [privacy_audit_report.md](privacy_audit_report.md).
+Desktop application files are not encrypted by ONF; use BitLocker or an equivalent encrypted storage policy for sensitive deployments. The Android alpha encrypts each audio segment with AES-256-GCM and a non-exportable Android Keystore key, while its session database, knowledge, and imported models rely on the Android application sandbox and device encryption. The current desktop code/configuration audit is in [privacy_audit_report.md](privacy_audit_report.md).
 
 ## Dragon Copilot and ONF: different offline boundaries
 
@@ -227,37 +229,69 @@ The strategic distinction is concise:
 
 > **Dragon Copilot provides resilient offline capture before cloud processing. ONF is designed for offline capture, transcription, retrieval, reasoning, facilitation, and export.**
 
-## From desktop to mobile and edge
+## Android flagship edition
 
-The core premise of ONF is broader than one Windows workstation: **small, quantized models can move to the user instead of moving the user's meeting to a remote model**.
+The repository now includes a standalone native Android alpha under [android](android). It is not a remote control for the desktop service and does not embed Python, FastAPI, or a WebView.
 
-Microsoft describes Foundry Local as a lightweight on-device runtime built on ONNX Runtime, with model variants selected for the available CPU, GPU, or NPU. The current Foundry Local documentation supports Windows, macOS on Apple silicon, and Linux, and its SDK is designed for device-hosted client applications.
+[![ONF running the Code Blue ransomware scenario on a Samsung Galaxy Z Fold7](screenshots/onf-android-fold7-code-blue.png)](screenshots/onf-android-fold7-code-blue.png)
 
-### What is portable already
+### Sideload the Android alpha
 
-The project is separated into boundaries that can move independently:
+[**Download ONF Android v0.1.0-alpha01 APK**](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.apk) · [SHA-256 checksum](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.sha256.txt) · [Release notes](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/tag/android-v0.1.0-alpha01)
 
-1. **Presentation** — the React interface is responsive and can be hosted in a desktop shell, tablet browser, PWA, or native WebView.
-2. **Session contract** — transcript, insight, decision, action, and risk events are plain JSON over REST/WebSocket.
-3. **Model contract** — the application uses OpenAI-compatible requests and Foundry model aliases rather than hard-coding one accelerator.
-4. **Model format** — Foundry's optimized models run through ONNX Runtime, whose model format is designed for execution across cloud, desktop, edge, and mobile-class hardware.
-5. **Storage** — sessions and knowledge are local and can be mapped to SQLite or a platform sandbox.
+This is an **experimental debug-signed sideload build**, not a Google Play release. Android may require **Install unknown apps** permission for the browser or file manager used to open it. The APK does not bundle multi-gigabyte model weights; compatible Gemma `.litertlm` packs must be imported separately. Verify the download before installing: SHA-256 `41AA785B69C63CED2A812A1AAC2463A9F3F0ABD4F234E712560E50C7EB859D35`.
 
-### What a native phone port still requires
+The intended next distribution step—subject to community interest—is a properly release-signed, policy-reviewed Google Play listing with Play App Signing, store privacy/data-safety declarations, model-license handling, an upgrade-safe storage strategy, and broader device testing. Until those gates are complete, sideloading remains the honest alpha channel.
 
-This repository is the **Windows reference implementation**. It is browser-responsive, but it is not currently an installable iOS or Android application. A native mobile edition would need to:
+Microsoft announced **Foundry Local for Android** as a gated preview in November 2025. The Play Store app is a companion service for client applications using Microsoft's separate Android SDK; version 0.1.5 advertises idiomatic Kotlin APIs and audio transcription. ONF detects that official companion but does not use undocumented Binder calls. The gated SDK is not currently published to Maven Central or Google Maven, so ONF retains its proven LiteRT-LM engine until Microsoft grants the client package.
 
-- replace the PowerShell/Python host with a platform-native process or supported embedded runtime;
-- use Foundry Local where the target platform is supported, or package compatible quantized ONNX models with ONNX Runtime Mobile;
-- replace ChromaDB with a mobile-safe local index or SQLite implementation;
-- use the platform microphone, background-execution, storage, and permission APIs;
-- select smaller ASR/TTS models appropriate to phone memory, battery, and thermal limits;
-- benchmark latency and quality on representative Apple, Qualcomm, MediaTek, and Samsung hardware;
-- preserve the same local-only consent, retention, and export controls.
+The companion has independent network and preview data terms. ONF's current no-network/no-telemetry claim applies to the LiteRT-backed ONF APK, not automatically to a future Foundry companion integration; that path requires an explicit privacy review and visible runtime disclosure.
 
-So the architecture is intentionally **mobile-capable in premise and portable in layers**, while the code in this repository remains an honestly scoped Windows implementation. No claim is made that this exact `.ps1` + FastAPI stack can be installed unchanged on every phone.
+The Android trust boundary is the phone itself:
 
-For background on portable model execution, see [ONNX and cross-platform inference](https://learn.microsoft.com/azure/machine-learning/concept-onnx) and the [Foundry Local SDK reference](https://learn.microsoft.com/azure/foundry-local/reference/reference-sdk-current).
+```mermaid
+flowchart LR
+  MIC[Android microphone] --> CAPTURE[Foreground AudioRecord service]
+  CAPTURE --> CRYPTO[AES-256-GCM segments\nAndroid Keystore]
+  CRYPTO --> PRIVATE[App-private encrypted spool]
+  PRIVATE --> RUNTIME{Official runtime available?}
+  RUNTIME -. gated SDK .-> FOUNDRY[Foundry Local Android\ncompanion service]
+  RUNTIME --> GEMMA[Gemma 4 audio/text\nLiteRT-LM fallback]
+  FOUNDRY --> ORCH[Native facilitator\ndeterministic outcomes first]
+  GEMMA --> ORCH
+  KNOWLEDGE[SQLite knowledge vault\n384D local hashing] --> ORCH
+  SKILLS[Markdown skills] --> ORCH
+  ORCH --> UI[Adaptive Compose workspace]
+  ORCH --> EXPORT[User-selected JSON/Markdown export]
+```
+
+### Implemented Android capabilities
+
+- native Kotlin and Jetpack Compose interface;
+- unfolded two-pane workspace and Fold cover-display navigation;
+- persistent sessions, transcript, guidance, decisions, actions, risks, titles, and metrics;
+- section-cited SQLite knowledge retrieval and the Northstar demonstration pack;
+- five local Markdown facilitator skills;
+- real foreground microphone capture in five-second PCM/WAV segments;
+- atomic AES-256-GCM recording envelopes with independent Keystore-generated IVs;
+- detection and status reporting for the official Foundry Local Android companion;
+- a retained private `.litertlm` model library with explicit E2B/E4B selection and removal;
+- Google AI Edge Gallery detection with an honest scoped-storage boundary;
+- imported Gemma 4 inference through LiteRT-LM 0.14.0;
+- bounded GPU-first inference with CPU fallback;
+- optional Gemma multimodal transcription of encrypted audio segments;
+- local JSON and Markdown export;
+- no `INTERNET` permission, telemetry, cloud backup, or device-transfer backup.
+
+Android models are deliberately not bundled in the APK. Gemma 4 E2B is approximately 2.58 GB and E4B approximately 3.65 GB; both can now be retained and switched from the private system sheet when supplied in LiteRT-LM-compatible `.litertlm` format. Android scoped storage prevents ONF from silently reusing a model downloaded into Google AI Edge Gallery's private app tree, so production reuse requires an explicit import. Once the gated Foundry Android SDK is available, the chooser can add Foundry catalog aliases beside the current LiteRT library; deterministic ONF operation remains available without either generative runtime.
+
+### Validation status
+
+The native alpha has been built and exercised on an Android 16/API 36 Fold-class emulator in both open and closed states and installed on a Samsung Galaxy Z Fold7 (`SM-F966B`). Automated tests cover launch, the complete Code Blue workflow, deterministic outcome extraction, RAG, serialization, WAV generation, tamper detection, Android Keystore encryption/decryption, and a real foreground microphone segment.
+
+The sideload APK has also passed signature verification, Android lint, 16 KB ZIP alignment, and 16 KB ELF alignment for every arm64 native library. Its manifest contains microphone and foreground-service permissions but no internet permission.
+
+The physical Fold7 passed local Android Keystore and skill tests plus real E2B → E4B → E2B switching without an app restart. CPU/XNNPACK was selected throughout. In the final one-shot sequence, load/generation took 523/2,755 ms for E2B, 13,581/6,391 ms for E4B, and 1,502/2,609 ms after returning to E2B; every probe returned its exact readiness token. These are functional smoke results, not sustained throughput, quality, battery, or thermal claims. Build, model-import, Foundry preview, and sideload details are in [android/README.md](android/README.md).
 
 ## Quick start
 
@@ -366,6 +400,15 @@ frontend/
   src/hooks/useSegmentRecorder.js Complete browser audio segments
   src/lib/api.js                  Local API configuration
 
+android/
+  app/src/main/java/              Native facilitator, storage, audio, AI and Compose UI
+  app/src/main/assets/            Bundled skills and cited demonstration evidence
+  app/src/test/                   Deterministic JVM tests
+  app/src/androidTest/            Fold UI, Keystore and foreground-capture tests
+  scripts/                        Build, emulator and physical-device sideload helpers
+  README.md                       Android architecture, model import and Fold7 guide
+  FOUNDRY_LOCAL_ANDROID.md        Foundry companion evidence and official SDK migration plan
+
 scripts/
   setup.ps1                       Reproducible core/optional-audio setup
   start.ps1                       Foundry + backend + frontend launcher
@@ -383,11 +426,15 @@ Large models, audio checkpoints, local knowledge, generated speech, ChromaDB dat
 
 ## Current limitations
 
-- The reference launcher and tested implementation target Windows.
-- Native iOS and Android packaging is a future port, not a current deliverable.
+- The desktop reference launcher targets Windows; Android is a separate native alpha.
+- The Fold7 has passed E2B/E4B switching and initial inference; sustained throughput, quality, battery, thermals, and long-session microphone behavior still require benchmarking.
+- Foundry Local Android is a preview companion architecture; ONF cannot link it until Microsoft grants the gated Kotlin client SDK.
+- Android sandboxing prevents direct production reuse of Gallery-owned model files; users must import a shared/original pack into ONF.
+- The Android APK imports compatible `.litertlm` models but intentionally does not bundle multi-gigabyte Gemma weights.
+- Native iOS packaging is not a current deliverable.
 - Speaker identity/diarization is not currently claimed or included.
 - Feature-hash retrieval is intentionally lightweight and is less semantically capable than a neural embedding model.
-- English is the only supported local TTS language in this build.
+- Android TTS is not included in the alpha; English is the only supported local desktop TTS language.
 - Model quality and latency depend on the selected device variant and available memory.
 - Foundry Local and its CLI are evolving; consult the current Microsoft documentation when upgrading.
 
