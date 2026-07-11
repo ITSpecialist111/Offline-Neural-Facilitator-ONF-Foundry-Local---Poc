@@ -38,6 +38,16 @@ The project targets Android 16/API 36 and supports Android 9/API 28 or newer. Th
 
 ## Build a sideload APK
 
+For testers who do not need to build from source:
+
+- [Download `ONF-Android-v0.1.0-alpha01-debug.apk`](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.apk)
+- [Download the SHA-256 checksum](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.sha256.txt)
+- expected SHA-256: `41AA785B69C63CED2A812A1AAC2463A9F3F0ABD4F234E712560E50C7EB859D35`
+
+This is a debug-signed experimental build. Enable **Install unknown apps** only for the app used to open the APK, verify the checksum, and disable that permission again after installation if it is no longer needed.
+
+To build the same alpha locally, run the following from the repository root.
+
 From the repository root:
 
 ```powershell
@@ -51,6 +61,10 @@ android/artifacts/ONF-Android-v0.1.0-alpha01-debug.apk
 ```
 
 The alpha uses the standard Android debug certificate and is intended only for sideload testing.
+
+## Distribution roadmap
+
+The sideload prerelease is the current test channel. If there is sufficient interest, the next milestone is an official Google Play release. That requires a separate release signing key/Play App Signing, release-build hardening, Play policy and data-safety review, a public privacy policy, model-license and download UX, upgrade/migration testing, crash/ANR monitoring decisions consistent with ONF's privacy position, accessibility review, and validation across a wider Android device matrix. No Play Store availability is claimed yet.
 
 ## Connect and install on the Fold7
 

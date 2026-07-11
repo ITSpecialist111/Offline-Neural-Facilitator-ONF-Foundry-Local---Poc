@@ -233,6 +233,16 @@ The strategic distinction is concise:
 
 The repository now includes a standalone native Android alpha under [android](android). It is not a remote control for the desktop service and does not embed Python, FastAPI, or a WebView.
 
+[![ONF running the Code Blue ransomware scenario on a Samsung Galaxy Z Fold7](screenshots/onf-android-fold7-code-blue.png)](screenshots/onf-android-fold7-code-blue.png)
+
+### Sideload the Android alpha
+
+[**Download ONF Android v0.1.0-alpha01 APK**](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.apk) · [SHA-256 checksum](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/download/android-v0.1.0-alpha01/ONF-Android-v0.1.0-alpha01-debug.sha256.txt) · [Release notes](https://github.com/ITSpecialist111/Offline-Neural-Facilitator-ONF-Foundry-Local---Poc/releases/tag/android-v0.1.0-alpha01)
+
+This is an **experimental debug-signed sideload build**, not a Google Play release. Android may require **Install unknown apps** permission for the browser or file manager used to open it. The APK does not bundle multi-gigabyte model weights; compatible Gemma `.litertlm` packs must be imported separately. Verify the download before installing: SHA-256 `41AA785B69C63CED2A812A1AAC2463A9F3F0ABD4F234E712560E50C7EB859D35`.
+
+The intended next distribution step—subject to community interest—is a properly release-signed, policy-reviewed Google Play listing with Play App Signing, store privacy/data-safety declarations, model-license handling, an upgrade-safe storage strategy, and broader device testing. Until those gates are complete, sideloading remains the honest alpha channel.
+
 Microsoft announced **Foundry Local for Android** as a gated preview in November 2025. The Play Store app is a companion service for client applications using Microsoft's separate Android SDK; version 0.1.5 advertises idiomatic Kotlin APIs and audio transcription. ONF detects that official companion but does not use undocumented Binder calls. The gated SDK is not currently published to Maven Central or Google Maven, so ONF retains its proven LiteRT-LM engine until Microsoft grants the client package.
 
 The companion has independent network and preview data terms. ONF's current no-network/no-telemetry claim applies to the LiteRT-backed ONF APK, not automatically to a future Foundry companion integration; that path requires an explicit privacy review and visible runtime disclosure.
